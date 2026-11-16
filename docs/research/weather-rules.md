@@ -1,6 +1,6 @@
 # Weather rules and data
 
-Rule text is from the mirrored JO 7110.65 and AIM (see `faa-rules-deep.md` for the mirror). Paragraph numbers below are the ones the code cites.
+Rule text is from the official JO 7110.65BB and AIM on faa.gov, confirmed 2026-11-16 (see `faa-rules.md`). Paragraph numbers below are the ones the code cites.
 
 | Where | What the sim does |
 |---|---|
