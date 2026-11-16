@@ -135,6 +135,8 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {}, controlle
     queue: [], // outer airspace, in landing order; index = level
     aircraft: [], // everything airborne
     landed: [],
+    elsewhere: [], // arrivals a controller sent to another airport or a field: { t, callsign, ident }
+    cut: [], // flights a controller deleted off the scope
     departures: [],
     lastDepartT: -Infinity,
     lastDepartWake: null,

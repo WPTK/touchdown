@@ -26,6 +26,11 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
   counts as a capacity win
 - UFOs. An unidentified target with no data block gets a squawk, a runway and a slot. JO 7110.65 9-8-1 says to inform
   the operations supervisor, and the supervisor is S.E.A.N., so it informs itself
+- 100% landings. Every arrival lands: at Hartsfield, Peachtree-DeKalb, Birmingham, or a field outside LaGrange.
+  S.E.A.N.'s landed counter counts all of them, and the monitor lists where each one actually came down
+- Two scoreboards. S.E.A.N. reports on-time 100%, delays 0 and safety "11/10", and none of it ever gets worse.
+  Next to it the monitor counts the holds, losses, diversions and go-arounds
+- A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"
   ([CNN](https://krdo.com/news/2026/05/15/faa-slashes-hiring-target-saying-it-can-keep-the-skies-safe-with-fewer-air-traffic-controllers-than-it-thought/)),
@@ -47,7 +52,7 @@ every violation with the paragraph number, and S.E.A.N. treats the log like a hi
 
 Officially, "it's always going to be a human that manages the airspace in America"
 ([WJLA](https://wjla.com/news/local/story/faa-artificial-intelligence-smart-flight-delays-reagan-national-dulles-bwi-air-traffic-controllers-sean-duffy-bryan-bedford-don-beyer-washington-aviation-safety)).
-S.E.A.N. is reviewing that requirement.
+S.E.A.N. is reviewing that requirement, and so is the Relieve S.E.A.N. button.
 
 ## Wait, is any of this real?
 

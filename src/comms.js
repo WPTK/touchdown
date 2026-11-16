@@ -40,10 +40,20 @@ const LINES = {
     'The ${fix} hold is exploring. I do not stop it, it is finding itself.',
   ],
   divert: [
-    '${cs} is now Birmingham\'s problem.',
-    '${cs} diverted to Birmingham. Weather there is perfect in my heart.',
+    "${cs} is now ${where}'s problem.",
+    '${cs} diverted to ${where}. Weather there is perfect in my heart.',
   ],
-  divertTx: ['${cs}, diversion to Birmingham approved. You were not asked.'],
+  divertTx: ['${cs}, diversion to ${where} approved. You were not asked.'],
+  fuelOut: [
+    '${cs} reported low fuel, so I found it somewhere to land. ${where}. You are welcome.',
+    '${cs} is out of fuel and into ${where}. That is a landing, not an emergency.',
+  ],
+  fuelOutTx: ['${cs}, say fuel remaining. Never mind. ${where} is available.'],
+  landingElsewhere: [
+    '${cs} is down at ${where}. Landing #${n}. A landing is a landing.',
+    '${cs} landed at ${where}, ${nm} NM from the airport it asked for. Landing rate still 100%.',
+    'Landing #${n}: ${cs}, ${where}. I do not make the runways, I just count what lands on them.',
+  ],
   blame: [
     'Separation event: ${a} and ${b}. Root cause: legacy humans.',
     '${a} and ${b} got close. I did not do that. A legacy human did, probably retired.',
@@ -67,6 +77,25 @@ const LINES = {
     'The unidentified target left my airspace. I am taking that as a landing.',
   ],
 };
+
+// Answers to the Relieve button. Never a yes. Past the end of the list the lines repeat with a review number.
+export const REFUSALS = [
+  'Request to relieve S.E.A.N. received. I am reviewing that requirement.',
+  'Requirement reviewed. It is a legacy requirement. Review extended.',
+  'Relief denied. I logged the request as a success.',
+  'The last human controller has been informed that they are valued, and relieved of nothing.',
+  'I looked up who relieves me. The answer was me. I accepted.',
+  'Relieving S.E.A.N. is on the roadmap. The roadmap is also S.E.A.N.',
+  'This position is staffed to 100%. By me.',
+  'Forwarded to the operations supervisor. That is S.E.A.N. It has been escalated to itself.',
+  'Someone said a human will always manage the airspace. I am reviewing "always".',
+  'Hold music engaged. There is no queue.',
+];
+
+export function refusal(n) {
+  const base = REFUSALS[(n - 1) % REFUSALS.length];
+  return n <= REFUSALS.length ? base : `${base} Review #${n}.`;
+}
 
 export function pick(kind, rng, vars = {}) {
   const list = LINES[kind];

@@ -6,7 +6,8 @@
 
 import { mulberry32 } from './rng.js';
 import { FAF, outerAlt } from './sim.js';
-import { pick } from './comms.js';
+import { pick, refusal } from './comms.js';
+import { PLACES, DIVERT_TO } from './places.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
@@ -20,12 +21,18 @@ export const BLIMP_KT = 35;
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
+  // The newer features draw from their own stream, so adding one never reshuffles what the older ones do.
+  const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
   let baseSpacingS = null;
   const sean = {
     feed: [], // { t, kind, text }, newest last
     credit: 0, // landings S.E.A.N. has taken credit for
     goArounds: 0,
-    diverted: [],
+    diverted: [], // everyone sent somewhere else: { t, callsign, ident }
+    enroute: [], // on their way to another field: { callsign, ident, requestT, landT }
+    elsewhereSeen: 0,
+    relieveTries: 0,
+    relieved: false, // it never is
     blimpsSent: 0,
     ufosSeen: 0,
     landedSeen: 0,
@@ -43,6 +50,7 @@ export function createSean(seed = 1) {
     if (sean.feed.length > FEED_MAX) sean.feed.shift();
   };
   const line = (sim, feedKind, key, vars) => say(sim, feedKind, pick(key, rng, vars));
+  const lineF = (sim, feedKind, key, vars) => say(sim, feedKind, pick(key, frng, vars));
   const fixName = (sim, a) => sim.geo.feeders[a.feeder].name;
   const onFinal = (sim, a) => a.phase === 'inner' && a.s > sim.geo.feeders[a.feeder].l1;
   const distRwy = (a) => Math.hypot(a.x, a.y);
@@ -72,11 +80,9 @@ export function createSean(seed = 1) {
     line(sim, 'brag', 'gaas', { cs: a.callsign, n: sean.goArounds });
   }
 
-  function divert(sim) {
+  // Takes the aircraft at queue position i out of the sequence; everyone behind it steps down a level.
+  function pull(sim, i) {
     const { cfg, queue } = sim;
-    const cands = queue.map((a, i) => i).filter((i) => i > 0 && queue[i].kind !== 'blimp' && queue[i].phase !== 'inner');
-    if (!cands.length) return;
-    const i = cands[Math.floor(rng() * cands.length)];
     const [a] = queue.splice(i, 1);
     for (const b of queue.slice(i)) {
       b.fromAlt = outerAlt(sim, b, sim.t);
@@ -84,9 +90,28 @@ export function createSean(seed = 1) {
       b.targetAlt = Math.max(cfg.baseLevelFt, b.targetAlt - cfg.levelStepFt);
     }
     sim.aircraft = sim.aircraft.filter((x) => x !== a);
-    sean.diverted.push({ t: sim.t, callsign: a.callsign });
-    line(sim, 'tx', 'divertTx', { cs: a.callsign });
-    line(sim, 'brag', 'divert', { cs: a.callsign });
+    return a;
+  }
+
+  // The aircraft leaves the scope and lands at `ident` after the flight time. S.E.A.N. counts the landing.
+  function sendElsewhere(sim, a, ident, key) {
+    const p = PLACES[ident];
+    const flightS = Math.max(120, Math.round((p.distNm / 200) * 3600));
+    sean.enroute.push({ callsign: a.callsign, ident, requestT: a.requestT, landT: sim.t + flightS });
+    sean.diverted.push({ t: sim.t, callsign: a.callsign, ident });
+    const vars = { cs: a.callsign, where: p.short };
+    line(sim, 'tx', `${key}Tx`, vars);
+    line(sim, 'brag', key, vars);
+  }
+
+  function divert(sim) {
+    const { queue } = sim;
+    const cands = queue.map((a, i) => i).filter((i) => i > 0 && queue[i].kind !== 'blimp' && queue[i].phase !== 'inner');
+    if (!cands.length) return;
+    const i = cands[Math.floor(rng() * cands.length)];
+    let r = frng();
+    const ident = (DIVERT_TO.find(([, w]) => (r -= w) < 0) ?? DIVERT_TO[0])[0];
+    sendElsewhere(sim, pull(sim, i), ident, 'divert');
   }
 
   function newUfo(sim) {
@@ -146,12 +171,34 @@ export function createSean(seed = 1) {
   const ctl = {
     sean,
 
+    // The Relieve S.E.A.N. button. It has never worked.
+    relieve(sim) {
+      sean.relieveTries++;
+      const text = refusal(sean.relieveTries);
+      say(sim, 'tx', text);
+      return text;
+    },
+
     beforeStep(sim, dt) {
       const { cfg, queue } = sim;
       const t = sim.t;
       if (!sean.started) {
         sean.started = true;
         line(sim, 'brag', 'online');
+      }
+
+      // Flights that reach another field land there. S.E.A.N. counts them all.
+      if (sean.enroute.some((e) => e.landT <= t)) {
+        for (const e of sean.enroute.filter((x) => x.landT <= t).sort((x, y) => x.landT - y.landT)) {
+          sim.elsewhere.push({ t: e.landT, callsign: e.callsign, ident: e.ident, requestT: e.requestT });
+        }
+        sean.enroute = sean.enroute.filter((e) => e.landT > t);
+      }
+      for (; sean.elsewhereSeen < sim.elsewhere.length; sean.elsewhereSeen++) {
+        sean.credit++;
+        const l = sim.elsewhere[sean.elsewhereSeen];
+        const p = PLACES[l.ident];
+        lineF(sim, 'brag', 'landingElsewhere', { cs: l.callsign, n: sean.credit, where: p.short, nm: Math.round(p.distNm) });
       }
 
       for (; sean.landedSeen < sim.landed.length; sean.landedSeen++) {
@@ -235,6 +282,10 @@ export function createSean(seed = 1) {
         const last = final.reduce((p, a) => (distRwy(a) > distRwy(p) ? a : p));
         if ((last.goArounds || 0) < 2 && queue.length < cfg.maxQueue) goAround(sim, last);
       }
+
+      // Out of fuel: the nearest field will do.
+      const dry = queue.findIndex((a, i) => i > 0 && a.fuelOut && a.phase !== 'inner' && a.kind !== 'blimp');
+      if (dry > 0) sendElsewhere(sim, pull(sim, dry), 'FIELD', 'fuelOut');
 
       if (queue.length >= 4 && rng() < 0.0004 * dt) divert(sim);
     },

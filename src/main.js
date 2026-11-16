@@ -2,6 +2,8 @@ import { createSim, setDemand, step } from './sim.js';
 import { drawScope } from './scope.js';
 import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
+import { PLACES } from './places.js';
+import { real, selfReported } from './score.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -55,10 +57,22 @@ function hms(t) {
 }
 
 function updatePanel() {
-  const losses = monitor.counts[PARA.SEP] || 0;
-  $('losses').textContent = losses;
-  $('losses').classList.toggle('bad', losses > 0);
-  $('landed').textContent = sim.landed.length;
+  const mine = selfReported(ctl.sean);
+  const truth = real(sim, monitor, ctl.sean);
+  $('sLanded').textContent = mine.landed;
+  $('sOnTime').textContent = `${mine.onTimePct}%`;
+  $('sDelays').textContent = mine.delays;
+  $('sSafety').textContent = mine.safety;
+  $('landed').textContent = truth.landedAtKatl;
+  $('elsewhere').textContent = truth.elsewhere;
+  $('rOnTime').textContent = `${truth.onTimePct}%`;
+  $('rDelay').textContent = `${truth.avgDelayMin} min`;
+  $('rHolds').textContent = truth.holds;
+  $('rGoArounds').textContent = truth.goArounds;
+  $('losses').textContent = truth.losses;
+  for (const id of ['rOnTime', 'rDelay', 'rHolds', 'rGoArounds', 'losses', 'elsewhere']) {
+    $(id).classList.toggle('bad', id === 'rOnTime' ? truth.onTimePct < 100 : id === 'rDelay' ? truth.avgDelayMin > 0 : Number($(id).textContent) > 0);
+  }
   $('clock').textContent = hms(sim.t);
   $('airborne').textContent = sim.aircraft.length;
   $('holding').textContent = sim.aircraft.filter((a) => a.phase === 'hold').length;
@@ -110,6 +124,19 @@ function updatePanel() {
         why.textContent = `${v.title}. ${v.detail}`;
         return row('li', '', v.t, p, why);
       }),
+  );
+
+  $('where').replaceChildren(
+    ...Object.keys(PLACES).map((ident) => {
+      const li = document.createElement('li');
+      const p = document.createElement('span');
+      p.className = 'para';
+      p.textContent = `${PLACES[ident].short} (${PLACES[ident].where})`;
+      const c = document.createElement('span');
+      c.textContent = monitor.where[ident] || 0;
+      li.append(p, c);
+      return li;
+    }),
   );
 
   $('sequence').replaceChildren(
@@ -167,6 +194,10 @@ $('demand').addEventListener('input', () => {
   setDemand(sim, Number($('demand').value));
 });
 $('reset').addEventListener('click', reset);
+$('relieve').addEventListener('click', () => {
+  ctl.relieve(sim);
+  updatePanel();
+});
 window.addEventListener('resize', resize);
 
 reset();

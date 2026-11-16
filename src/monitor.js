@@ -9,6 +9,7 @@
 
 import { FAF, RUNWAY } from './sim.js';
 import { wakeMinNm } from './fleet.js';
+import { PLACES } from './places.js';
 
 const EPS = 1e-6;
 const KT = 1 / 3600;
@@ -38,6 +39,11 @@ export function createMonitor() {
     inner: null, // { t, items } for aircraft on the inner path, last tick
     informed: new Set(), // UAP targets already reported (9-8-1)
     filed: new Set(), // UAP targets whose AARO line is logged (AIM 7-7-4)
+    holders: new Set(), // every aircraft seen in a holding pattern
+    landings: [], // where each aircraft actually came down: { t, callsign, ident, where }
+    where: {}, // landings per place
+    landedCursor: 0,
+    elsewhereCursor: 0,
   };
 }
 
@@ -193,6 +199,18 @@ export function observe(m, sim) {
       m.filed.add(u.id);
       log(m, t, PARA.AARO, 'UAP report not sent to AARO', [u.id], 'Reports go to https://www.aaro.mil/. S.E.A.N. kept it in-house');
     }
+  }
+
+  // Where each one actually came down. Not a 7110.65 matter, so it is a ledger and not a violation.
+  for (const a of aircraft) if (a.phase === 'hold') m.holders.add(a.id);
+  const down = (l, ident) => {
+    m.landings.push({ t: l.landT ?? l.t, callsign: l.callsign, ident, where: PLACES[ident].short });
+    m.where[ident] = (m.where[ident] || 0) + 1;
+  };
+  for (; m.landedCursor < sim.landed.length; m.landedCursor++) down(sim.landed[m.landedCursor], 'KATL');
+  for (; m.elsewhereCursor < sim.elsewhere.length; m.elsewhereCursor++) {
+    const l = sim.elsewhere[m.elsewhereCursor];
+    down(l, l.ident);
   }
 
   for (const key of m.active.keys()) if (!seen.has(key)) m.active.delete(key);

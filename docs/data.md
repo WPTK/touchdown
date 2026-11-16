@@ -135,3 +135,17 @@ Every leg keeps its full 132-character source record in `raw`, so any column tha
   within 5 degrees. This is in the FAA data, not a parsing error; a test records it.
 - Each FAF altitude equals the height of a 3 degree glidepath at the FAF's distance from the threshold, to within
   6 ft (the test enforces this), which is an independent check on the FAF position, threshold elevation, glidepath and projection.
+
+## Where S.E.A.N. lands things (`data/alternates-2611.json`, `src/places.js`)
+
+`scripts/alternates.js` reads the same CIFP file as above and writes the airport reference point (position, name,
+source record) for KATL, KPDK (DeKalb-Peachtree), KBHM (Birmingham-Shuttlesworth) and KLGC (LaGrange/Callaway), projected
+as NM east and north of KATL with the same projection as `katl-2611.json`:
+
+```
+npm run data -- path/to/FAACIFP18 KATL          # KATL as before
+node scripts/alternates.js path/to/FAACIFP18    # writes data/alternates-2611.json
+```
+
+KPDK is 15.7 NM at 024 degrees from KATL, KBHM 116.3 NM at 268, KLGC 49.7 NM at 221. The field outside LaGrange is
+not in any FAA record. It is 2.5 NM from the KLGC reference point at 340 degrees; that offset is made up.

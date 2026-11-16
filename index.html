@@ -17,9 +17,28 @@
         <p class="disclaimer">Parody. Not affiliated with the FAA or DOT, and it doesn't control real aircraft (please don't let it).</p>
       </header>
 
-      <section class="status" aria-live="polite">
-        <div class="big"><span id="losses">0</span><label>separation losses</label></div>
-        <div class="big"><span id="landed">0</span><label>landed</label></div>
+      <section class="boards" aria-live="polite">
+        <div class="board sean">
+          <h2>S.E.A.N. reports</h2>
+          <dl>
+            <dt>Landed</dt><dd id="sLanded">0</dd>
+            <dt>On time</dt><dd id="sOnTime">100%</dd>
+            <dt>Delays</dt><dd id="sDelays">0</dd>
+            <dt>Safety</dt><dd id="sSafety">11/10</dd>
+          </dl>
+        </div>
+        <div class="board real">
+          <h2>Monitor counts</h2>
+          <dl>
+            <dt>Landed at KATL</dt><dd id="landed">0</dd>
+            <dt>Landed elsewhere</dt><dd id="elsewhere">0</dd>
+            <dt>On time</dt><dd id="rOnTime">100%</dd>
+            <dt>Avg delay</dt><dd id="rDelay">0 min</dd>
+            <dt>Holds</dt><dd id="rHolds">0</dd>
+            <dt>Go-arounds</dt><dd id="rGoArounds">0</dd>
+            <dt>Separation losses</dt><dd id="losses">0</dd>
+          </dl>
+        </div>
       </section>
 
       <dl class="stats">
@@ -48,6 +67,7 @@
         <label class="slider"><span>Demand <output id="demandOut">24</output> arrivals/h</span>
           <input id="demand" type="range" min="0" max="60" step="1" value="24">
         </label>
+        <button id="relieve" type="button">Relieve S.E.A.N.</button>
         <div class="row">
           <label>Seed <input id="seed" type="number" min="1" value="1"></label>
           <button id="reset" type="button">Reset</button>
@@ -63,6 +83,11 @@
         <h2>JO 7110.65 monitor</h2>
         <ul id="counts" class="counts"></ul>
         <ol id="log" class="log"></ol>
+      </section>
+
+      <section>
+        <h2>Where they came down</h2>
+        <ul id="where" class="counts where"></ul>
       </section>
 
       <section>
