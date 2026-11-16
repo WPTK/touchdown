@@ -16,8 +16,9 @@
 
 import { mulberry32 } from './rng.js';
 import { pickType, wakeMinNm } from './fleet.js';
-import { FLOWS, FLOW_HOLD_S, groundSpeed } from './weather.js';
-import { innerPath, makePath, missedFix, outerPath, holdFix, pointAt, rwId, sameWakeRunway, starsFor, RUNWAYS } from './airspace.js';
+import { FLOW_HOLD_S, groundSpeed } from './weather.js';
+import { makePath, pointAt, rwId } from './airspace.js';
+import { AIRPORTS } from './airports.js';
 import { lostSeparation } from './separation.js';
 
 const KT = 1 / 3600; // NM per second, per knot
@@ -58,8 +59,8 @@ const AIRLINES = ['PEACH', 'GRITS', 'KUDZU', 'PECAN', 'OKRA'];
 // One inner route with its altitude profile. From the hold fix the aircraft descends at `rate` ft per NM, never below
 // the floor of any 'at' or 'at or above' altitude still ahead, and from the FAF it is on the glidepath to the
 // threshold. `rate` goes up from the default only where an 'at' altitude is out of reach otherwise.
-function buildRoute(starIdent, runway, cfg) {
-  const r = innerPath(starIdent, runway);
+function buildRoute(air, starIdent, runway, cfg) {
+  const r = air.innerPath(starIdent, runway);
   const vs = r.path.verts;
   const faf = vs.find((v) => v.role === 'faf');
   const thr = vs.at(-1);
@@ -92,15 +93,16 @@ function orbitAt(outer, r) {
 
 // Everything the sim flies for one flow: the STARs that serve all of its runways, each with its hold fix, its outer
 // paths (one per enroute transition, each with its holding orbit) and its inner route to each runway.
-export function layout(cfg = CONFIG, flow = 'west') {
-  const runways = FLOWS[flow].runways.map(rwId);
+export function layout(cfg = CONFIG, flow = 'west', ap = AIRPORTS.KATL) {
+  const { air } = ap;
+  const runways = ap.flows[flow].runways.map(rwId);
   const stars = {};
   const pairs = [];
-  for (const s of starsFor(runways)) {
-    const hold = holdFix(s.ident);
+  for (const s of air.starsFor(runways)) {
+    const hold = air.holdFix(s.ident);
     const outer = {};
     for (const tr of s.transitions) {
-      let path = outerPath(s.ident, tr, cfg.spawnRadiusNm);
+      let path = air.outerPath(s.ident, tr, cfg.spawnRadiusNm);
       if (path.len < 1) {
         // The transition ends at the hold fix on the boundary (JJEDI4, GNDLF3): bring the aircraft in on the radial
         // from 2 NM further out so it still has an inbound course to the fix.
@@ -111,21 +113,21 @@ export function layout(cfg = CONFIG, flow = 'west') {
       outer[tr] = { path, orbit: orbitAt(path, cfg.holdRadiusNm) };
       pairs.push({ star: s.ident, transition: tr });
     }
-    const routes = Object.fromEntries(runways.map((rw) => [rw, buildRoute(s.ident, rw, cfg)]));
+    const routes = Object.fromEntries(runways.map((rw) => [rw, buildRoute(air, s.ident, rw, cfg)]));
     stars[s.ident] = { ident: s.ident, hold, outer, routes };
   }
-  return { flow, runways: runways.map((id) => RUNWAYS[id]), stars, pairs };
+  return { flow, runways: runways.map((id) => air.RUNWAYS[id]), stars, pairs };
 }
 
 // The separation argument as numbers. createSim refuses a config where any of these fail, for either flow.
-export function checkDesign(cfg = CONFIG) {
+export function checkDesign(cfg = CONFIG, ap = AIRPORTS.KATL) {
   const v = cfg.innerSpeedKt * KT;
   const stepS = (cfg.levelStepFt / cfg.stepRateFpm) * 60;
   let routesOk = true;
   let clears = true;
   let minDescentFpm = Infinity;
-  for (const flow of ['west', 'east']) {
-    for (const star of Object.values(layout(cfg, flow).stars)) {
+  for (const flow of Object.keys(ap.flows)) {
+    for (const star of Object.values(layout(cfg, flow, ap).stars)) {
       for (const route of Object.values(star.routes)) {
         routesOk &&= route.reachable;
         minDescentFpm = Math.min(minDescentFpm, route.rate * v * 60);
@@ -148,15 +150,22 @@ export function checkDesign(cfg = CONFIG) {
 // Weather is optional. Without it the sim is calm, west flow, base spacing.
 const CALM = Object.freeze({ windDir: null, windKt: 0, gustKt: null, desiredFlow: 'west', calm: true, rateMult: 1, llws: null, category: 'VFR' });
 
-export function createSim({ seed = 1, demandPerHour = 24, config = {}, controller = null, weather = null } = {}) {
-  const cfg = { ...CONFIG, ...config };
-  const design = checkDesign(cfg);
+export function createSim({ seed = 1, demandPerHour = 24, config = {}, controller = null, weather = null, airport = 'KATL', flow: startFlow = null } = {}) {
+  const ap = AIRPORTS[airport];
+  if (!ap) throw new Error(`unknown airport ${airport}`);
+  if (weather && !ap.weather) throw new Error(`${airport} has no weather`);
+  const cfg = { ...CONFIG, ...ap.config, ...config };
+  const design = checkDesign(cfg, ap);
   if (!design.ok) throw new Error(`unsafe config: ${JSON.stringify(design.checks)}`);
   const wx0 = weather ? weather.at(0) : CALM;
-  const flow = controller?.pickFlow?.({ flow: 'west' }, wx0) ?? (wx0.calm ? 'west' : wx0.desiredFlow);
+  const flow = startFlow ?? controller?.pickFlow?.({ flow: ap.defaultFlow }, wx0) ?? (wx0.calm ? ap.defaultFlow : wx0.desiredFlow);
+  if (!ap.flows[flow]) throw new Error(`${airport} has no ${flow} flow`);
   const sim = {
     cfg,
-    geo: layout(cfg, flow),
+    ap,
+    air: ap.air,
+    airport,
+    geo: layout(cfg, flow, ap),
     design,
     weather,
     wx: wx0,
@@ -226,7 +235,7 @@ function finalGs(sim, a) {
   const kt = innerKt(sim, a);
   const { windDir, windKt } = sim.wx;
   if (!windKt) return kt;
-  return Math.max(0.4 * kt, groundSpeed(kt, windDir, windKt, FLOWS[sim.flow].headingDeg));
+  return Math.max(0.4 * kt, groundSpeed(kt, windDir, windKt, sim.ap.flows[sim.flow].headingDeg));
 }
 
 const compass = (dx, dy) => ((90 - (Math.atan2(dy, dx) * 180) / Math.PI) % 360 + 360) % 360;
@@ -312,7 +321,7 @@ function stateAt(sim, a, t) {
   const s = sAt(sim, a, t);
   if (s >= a.route.path.len) return null;
   const p = pointAt(a.route.path, s);
-  return { x: p.x, y: p.y, alt: routeAlt(a.route, s), est: s >= a.route.finalStartS - EPS, rwy: a.rwy, rem: a.route.path.len - s, wake: a.wake };
+  return { x: p.x, y: p.y, alt: routeAlt(a.route, s), est: s >= a.route.finalStartS - EPS, rwy: a.rwy, rem: a.route.path.len - s, wake: a.wake, air: sim.air };
 }
 
 // Would an aircraft released at tr on `route` keep separation from everyone already released, for its whole flight?
@@ -327,7 +336,7 @@ function clear(sim, cand, tr) {
       const dh = Math.hypot(c.x - b.x, c.y - b.y);
       const dv = Math.abs(c.alt - b.alt);
       if (lostSeparation(dh, dv, c, b, sim.cfg, PROBE_MARGIN_NM, PROBE_MARGIN_FT)) return false;
-      if (c.est && b.est && sameWakeRunway(c.rwy, b.rwy)) {
+      if (c.est && b.est && sim.air.sameWakeRunway(c.rwy, b.rwy)) {
         const lead = c.rem < b.rem ? c : b;
         const min = wakeMinNm(lead.wake, lead === c ? b.wake : c.wake);
         if (min !== null && dh < min + PROBE_MARGIN_NM - EPS) return false;
@@ -485,7 +494,7 @@ function placeInner(sim, a) {
 export function goAround(sim, a) {
   const { cfg } = sim;
   const star = sim.geo.stars[a.star];
-  a.outer = makePath([{ x: a.x, y: a.y }, missedFix(a.rwy), star.hold]);
+  a.outer = makePath([{ x: a.x, y: a.y }, sim.air.missedFix(a.rwy), star.hold]);
   a.so = 0;
   a.phase = 'transit';
   a.rwy = null;
@@ -505,7 +514,7 @@ function updateWeather(sim) {
   if (!sim.weather) return;
   const wx = sim.weather.at(sim.t);
   sim.wx = wx;
-  sim.finalGsKt = Math.max(0.4 * sim.cfg.innerSpeedKt, groundSpeed(sim.cfg.innerSpeedKt, wx.windDir, wx.windKt, FLOWS[sim.flow].headingDeg)); // the default aircraft, for the landing gap and the panel
+  sim.finalGsKt = Math.max(0.4 * sim.cfg.innerSpeedKt, groundSpeed(sim.cfg.innerSpeedKt, wx.windDir, wx.windKt, sim.ap.flows[sim.flow].headingDeg)); // the default aircraft, for the landing gap and the panel
   const want = sim.controller?.pickFlow?.(sim, wx) ?? (wx.calm ? sim.flow : wx.desiredFlow);
   if (want !== sim.flowWant) {
     sim.flowWant = want;
@@ -514,7 +523,7 @@ function updateWeather(sim) {
   sim.changeover = want !== sim.flow && sim.t - sim.flowWantSince >= FLOW_HOLD_S;
   if (sim.changeover && sim.aircraft.length === 0) {
     sim.flow = want;
-    sim.geo = layout(sim.cfg, want);
+    sim.geo = layout(sim.cfg, want, sim.ap);
     sim.flowChanges.push({ t: sim.t, flow: want });
     sim.changeover = false;
   }
@@ -630,7 +639,7 @@ export function step(sim, dt = 1) {
 export const toRunway = (a) => (a.route ? a.route.path.len - a.s : Math.hypot(a.x, a.y));
 
 // What the separation rules need to know about an aircraft: which runway it is on and whether it is established.
-export const sepView = (a) => ({ rwy: a.phase === 'inner' ? a.rwy : null, est: a.phase === 'inner' && !!a.route && a.s >= a.route.finalStartS - EPS });
+export const sepView = (sim, a) => ({ air: sim.air, rwy: a.phase === 'inner' ? a.rwy : null, est: a.phase === 'inner' && !!a.route && a.s >= a.route.finalStartS - EPS });
 
 // Runs until nothing is waiting or airborne (demand should be 0), or until maxT.
 export function drain(sim, maxT = sim.t + 12 * 3600) {

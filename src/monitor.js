@@ -9,11 +9,9 @@
 
 import { sepView, toRunway } from './sim.js';
 import { lostSeparation, pairMargin } from './separation.js';
-import { sameWakeRunway } from './airspace.js';
 import { wakeMinNm } from './fleet.js';
-import { PLACES } from './places.js';
 import { CALM_KT, FLOWS, components } from './weather.js';
-import classB from '../data/classb-atl.json' with { type: 'json' };
+import classBAtl from '../data/classb-atl.json' with { type: 'json' };
 
 const EPS = 1e-6;
 const KT = 1 / 3600;
@@ -48,13 +46,13 @@ const inRing = (ring, x, y) => {
   }
   return inside;
 };
-export function classBFloor(x, y) {
+export function classBFloor(x, y, classB = classBAtl) {
   let floor = Infinity;
   for (const a of classB.areas) if (a.floorFt < floor && inRing(a.ring, x, y)) floor = a.floorFt;
   return floor;
 }
-const underlyingClassB = (a) => {
-  const floor = classBFloor(a.x, a.y);
+const underlyingClassB = (a, classB) => {
+  const floor = classBFloor(a.x, a.y, classB);
   return floor > 0 && floor !== Infinity && a.alt < floor;
 };
 
@@ -146,9 +144,9 @@ export function observe(m, sim) {
       const b = aircraft[j];
       const dv = Math.abs(a.alt - b.alt);
       const dh = Math.hypot(a.x - b.x, a.y - b.y);
-      const margin = pairMargin(dh, dv, sepView(a), sepView(b), cfg);
+      const margin = pairMargin(dh, dv, sepView(sim, a), sepView(sim, b), cfg);
       if (margin < m.closest.margin) m.closest = { margin, dh, dv, t };
-      if (lostSeparation(dh, dv, sepView(a), sepView(b), cfg)) {
+      if (lostSeparation(dh, dv, sepView(sim, a), sepView(sim, b), cfg)) {
         flag(
           `sep:${Math.min(a.id, b.id)}:${Math.max(a.id, b.id)}`,
           PARA.SEP,
@@ -163,7 +161,7 @@ export function observe(m, sim) {
 
   // 14 CFR 91.117(c): no more than 200 kt under a Class B shelf.
   for (const a of aircraft) {
-    if (a.speedKt > 200 + 0.5 && underlyingClassB(a)) {
+    if (a.speedKt > 200 + 0.5 && underlyingClassB(a, sim.ap.classB)) {
       flag(
         `classb:${a.id}`,
         PARA.SPEED_LIMIT,
@@ -275,7 +273,7 @@ export function observe(m, sim) {
       if (inner.some((a) => a.id === lead.id)) continue;
       const landed = sim.landed.findLast((l) => l.callsign === lead.callsign);
       const follow = m.inner.items
-        .filter((f) => f.rem > lead.rem && sameWakeRunway(f.rwy, lead.rwy) && inner.some((a) => a.id === f.id))
+        .filter((f) => f.rem > lead.rem && sim.air.sameWakeRunway(f.rwy, lead.rwy) && inner.some((a) => a.id === f.id))
         .sort((x, y) => x.rem - y.rem)[0];
       if (!landed || !follow) continue;
       const min = wakeMinNm(lead.wake, follow.wake);
@@ -319,10 +317,10 @@ export function observe(m, sim) {
   // Where each one actually came down. Not a 7110.65 matter, so it is a ledger and not a violation.
   for (const a of aircraft) if (a.phase === 'hold') m.holders.add(a.id);
   const down = (l, ident) => {
-    m.landings.push({ t: l.landT ?? l.t, callsign: l.callsign, ident, where: PLACES[ident].short });
+    m.landings.push({ t: l.landT ?? l.t, callsign: l.callsign, ident, where: sim.ap.places[ident].short });
     m.where[ident] = (m.where[ident] || 0) + 1;
   };
-  for (; m.landedCursor < sim.landed.length; m.landedCursor++) down(sim.landed[m.landedCursor], 'KATL');
+  for (; m.landedCursor < sim.landed.length; m.landedCursor++) down(sim.landed[m.landedCursor], sim.airport);
   for (; m.elsewhereCursor < sim.elsewhere.length; m.elsewhereCursor++) {
     const l = sim.elsewhere[m.elsewhereCursor];
     down(l, l.ident);

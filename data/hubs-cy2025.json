@@ -1,0 +1,1160 @@
+{
+ "source": "FAA ARP CY2025 commercial service enplanements",
+ "url": "https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger/arp-cy2025-commercial-service-enplanements.xlsx",
+ "retrieved": "2026-11-16",
+ "hubClass": "L = large hub, M = medium hub, S = small hub (the workbook Hub column); non-hubs are left out",
+ "airports": [
+  {
+   "locid": "ATL",
+   "hub": "L",
+   "name": "Hartsfield/Jackson Atlanta International",
+   "city": "Atlanta",
+   "state": "GA",
+   "enplanementsCY25": 51459786
+  },
+  {
+   "locid": "DFW",
+   "hub": "L",
+   "name": "Dallas-Fort Worth International",
+   "city": "Fort Worth",
+   "state": "TX",
+   "enplanementsCY25": 41297009
+  },
+  {
+   "locid": "ORD",
+   "hub": "L",
+   "name": "Chicago O'Hare International",
+   "city": "Chicago",
+   "state": "IL",
+   "enplanementsCY25": 40680735
+  },
+  {
+   "locid": "DEN",
+   "hub": "L",
+   "name": "Denver International",
+   "city": "Denver",
+   "state": "CO",
+   "enplanementsCY25": 39976695
+  },
+  {
+   "locid": "LAX",
+   "hub": "L",
+   "name": "Los Angeles International",
+   "city": "Los Angeles",
+   "state": "CA",
+   "enplanementsCY25": 36497303
+  },
+  {
+   "locid": "JFK",
+   "hub": "L",
+   "name": "John F Kennedy International",
+   "city": "New York",
+   "state": "NY",
+   "enplanementsCY25": 30792806
+  },
+  {
+   "locid": "MCO",
+   "hub": "L",
+   "name": "Orlando International",
+   "city": "Orlando",
+   "state": "FL",
+   "enplanementsCY25": 27999709
+  },
+  {
+   "locid": "LAS",
+   "hub": "L",
+   "name": "Harry Reid International",
+   "city": "Las Vegas",
+   "state": "NV",
+   "enplanementsCY25": 26531765
+  },
+  {
+   "locid": "MIA",
+   "hub": "L",
+   "name": "Miami International",
+   "city": "Miami",
+   "state": "FL",
+   "enplanementsCY25": 26450972
+  },
+  {
+   "locid": "SFO",
+   "hub": "L",
+   "name": "San Francisco International",
+   "city": "San Francisco International Airport",
+   "state": "CA",
+   "enplanementsCY25": 26251850
+  },
+  {
+   "locid": "CLT",
+   "hub": "L",
+   "name": "Charlotte/Douglas International",
+   "city": "Charlotte",
+   "state": "NC",
+   "enplanementsCY25": 25873555
+  },
+  {
+   "locid": "SEA",
+   "hub": "L",
+   "name": "Seattle-Tacoma International",
+   "city": "Seattle",
+   "state": "WA",
+   "enplanementsCY25": 25417071
+  },
+  {
+   "locid": "PHX",
+   "hub": "L",
+   "name": "Phoenix Sky Harbor International",
+   "city": "Phoenix",
+   "state": "AZ",
+   "enplanementsCY25": 25094817
+  },
+  {
+   "locid": "EWR",
+   "hub": "L",
+   "name": "Newark Liberty International",
+   "city": "Newark",
+   "state": "NJ",
+   "enplanementsCY25": 23464492
+  },
+  {
+   "locid": "IAH",
+   "hub": "L",
+   "name": "George Bush Intcntl/Houston",
+   "city": "Houston",
+   "state": "TX",
+   "enplanementsCY25": 23265028
+  },
+  {
+   "locid": "BOS",
+   "hub": "L",
+   "name": "General Edward Lawrence Logan International",
+   "city": "Boston",
+   "state": "MA",
+   "enplanementsCY25": 21021153
+  },
+  {
+   "locid": "MSP",
+   "hub": "L",
+   "name": "Minneapolis-St Paul International/Wold-Chamberlain",
+   "city": "Minneapolis",
+   "state": "MN",
+   "enplanementsCY25": 17488261
+  },
+  {
+   "locid": "DTW",
+   "hub": "L",
+   "name": "Detroit Metro Wayne County",
+   "city": "Detroit",
+   "state": "MI",
+   "enplanementsCY25": 16294768
+  },
+  {
+   "locid": "LGA",
+   "hub": "L",
+   "name": "Laguardia",
+   "city": "New York",
+   "state": "NY",
+   "enplanementsCY25": 16278532
+  },
+  {
+   "locid": "FLL",
+   "hub": "L",
+   "name": "Fort Lauderdale/Hollywood International",
+   "city": "Fort Lauderdale",
+   "state": "FL",
+   "enplanementsCY25": 15646752
+  },
+  {
+   "locid": "PHL",
+   "hub": "L",
+   "name": "Philadelphia International",
+   "city": "Philadelphia",
+   "state": "PA",
+   "enplanementsCY25": 14779849
+  },
+  {
+   "locid": "IAD",
+   "hub": "L",
+   "name": "Washington Dulles International",
+   "city": "Dulles",
+   "state": "VA",
+   "enplanementsCY25": 13859569
+  },
+  {
+   "locid": "SLC",
+   "hub": "L",
+   "name": "Salt Lake City International",
+   "city": "Salt Lake City",
+   "state": "UT",
+   "enplanementsCY25": 13429128
+  },
+  {
+   "locid": "SAN",
+   "hub": "L",
+   "name": "San Diego International",
+   "city": "San Diego",
+   "state": "CA",
+   "enplanementsCY25": 12675684
+  },
+  {
+   "locid": "BNA",
+   "hub": "L",
+   "name": "Nashville International",
+   "city": "Nashville",
+   "state": "TN",
+   "enplanementsCY25": 12549304
+  },
+  {
+   "locid": "BWI",
+   "hub": "L",
+   "name": "Baltimore/Washington International Thurgood Marshall",
+   "city": "Glen Burnie",
+   "state": "MD",
+   "enplanementsCY25": 12274134
+  },
+  {
+   "locid": "TPA",
+   "hub": "L",
+   "name": "Tampa International",
+   "city": "Tampa",
+   "state": "FL",
+   "enplanementsCY25": 12110427
+  },
+  {
+   "locid": "DCA",
+   "hub": "L",
+   "name": "Ronald Reagan Washington Ntl",
+   "city": "Arlington",
+   "state": "VA",
+   "enplanementsCY25": 12003594
+  },
+  {
+   "locid": "AUS",
+   "hub": "L",
+   "name": "Austin-Bergstrom International",
+   "city": "Austin",
+   "state": "TX",
+   "enplanementsCY25": 10651727
+  },
+  {
+   "locid": "HNL",
+   "hub": "L",
+   "name": "Daniel K Inouye International",
+   "city": "Honolulu",
+   "state": "HI",
+   "enplanementsCY25": 10430353
+  },
+  {
+   "locid": "MDW",
+   "hub": "M",
+   "name": "Chicago Midway International",
+   "city": "Chicago",
+   "state": "IL",
+   "enplanementsCY25": 9367712
+  },
+  {
+   "locid": "PDX",
+   "hub": "M",
+   "name": "Portland International",
+   "city": "Portland",
+   "state": "OR",
+   "enplanementsCY25": 9054394
+  },
+  {
+   "locid": "DAL",
+   "hub": "M",
+   "name": "Dallas Love Field",
+   "city": "Dallas",
+   "state": "TX",
+   "enplanementsCY25": 8151354
+  },
+  {
+   "locid": "RDU",
+   "hub": "M",
+   "name": "Raleigh-Durham International",
+   "city": "Raleigh",
+   "state": "NC",
+   "enplanementsCY25": 7670956
+  },
+  {
+   "locid": "STL",
+   "hub": "M",
+   "name": "St Louis Lambert International",
+   "city": "St. Louis",
+   "state": "MO",
+   "enplanementsCY25": 7483526
+  },
+  {
+   "locid": "SMF",
+   "hub": "M",
+   "name": "Sacramento International",
+   "city": "Sacramento",
+   "state": "CA",
+   "enplanementsCY25": 6805910
+  },
+  {
+   "locid": "HOU",
+   "hub": "M",
+   "name": "William P Hobby",
+   "city": "Houston",
+   "state": "TX",
+   "enplanementsCY25": 6790274
+  },
+  {
+   "locid": "SJU",
+   "hub": "M",
+   "name": "Luis Munoz Marin International",
+   "city": "San Juan",
+   "state": "PR",
+   "enplanementsCY25": 6658037
+  },
+  {
+   "locid": "MSY",
+   "hub": "M",
+   "name": "Louis Armstrong New Orleans International",
+   "city": "Kenner",
+   "state": "LA",
+   "enplanementsCY25": 6221146
+  },
+  {
+   "locid": "MCI",
+   "hub": "M",
+   "name": "Kansas City International",
+   "city": "Kansas City",
+   "state": "MO",
+   "enplanementsCY25": 5613974
+  },
+  {
+   "locid": "SNA",
+   "hub": "M",
+   "name": "John Wayne/Orange County",
+   "city": "Santa Ana",
+   "state": "CA",
+   "enplanementsCY25": 5521729
+  },
+  {
+   "locid": "RSW",
+   "hub": "M",
+   "name": "Southwest Florida International",
+   "city": "Fort Myers",
+   "state": "FL",
+   "enplanementsCY25": 5504420
+  },
+  {
+   "locid": "SJC",
+   "hub": "M",
+   "name": "Mineta San Jose International",
+   "city": "San Jose",
+   "state": "CA",
+   "enplanementsCY25": 5257421
+  },
+  {
+   "locid": "SAT",
+   "hub": "M",
+   "name": "San Antonio International",
+   "city": "San Antonio",
+   "state": "TX",
+   "enplanementsCY25": 5237816
+  },
+  {
+   "locid": "IND",
+   "hub": "M",
+   "name": "Indianapolis International",
+   "city": "Indianapolis",
+   "state": "IN",
+   "enplanementsCY25": 5221447
+  },
+  {
+   "locid": "CLE",
+   "hub": "M",
+   "name": "Cleveland-Hopkins International",
+   "city": "Cleveland",
+   "state": "OH",
+   "enplanementsCY25": 4855943
+  },
+  {
+   "locid": "PIT",
+   "hub": "M",
+   "name": "Pittsburgh International",
+   "city": "Pittsburgh",
+   "state": "PA",
+   "enplanementsCY25": 4792035
+  },
+  {
+   "locid": "OAK",
+   "hub": "M",
+   "name": "Oakland San Francisco Bay",
+   "city": "Oakland",
+   "state": "CA",
+   "enplanementsCY25": 4532494
+  },
+  {
+   "locid": "CMH",
+   "hub": "M",
+   "name": "John Glenn Columbus International",
+   "city": "Columbus",
+   "state": "OH",
+   "enplanementsCY25": 4396625
+  },
+  {
+   "locid": "CVG",
+   "hub": "M",
+   "name": "Cincinnati/Northern Kentucky International",
+   "city": "Hebron",
+   "state": "KY",
+   "enplanementsCY25": 4366865
+  },
+  {
+   "locid": "DJT",
+   "hub": "M",
+   "name": "President Donald J Trump International",
+   "city": "West Palm Beach",
+   "state": "FL",
+   "enplanementsCY25": 4257185
+  },
+  {
+   "locid": "JAX",
+   "hub": "M",
+   "name": "Jacksonville International",
+   "city": "Jacksonville",
+   "state": "FL",
+   "enplanementsCY25": 3719723
+  },
+  {
+   "locid": "ONT",
+   "hub": "M",
+   "name": "Ontario International",
+   "city": "Ontario",
+   "state": "CA",
+   "enplanementsCY25": 3473874
+  },
+  {
+   "locid": "OGG",
+   "hub": "M",
+   "name": "Kahului",
+   "city": "Kahului",
+   "state": "HI",
+   "enplanementsCY25": 3450472
+  },
+  {
+   "locid": "BDL",
+   "hub": "M",
+   "name": "Bradley International",
+   "city": "Windsor Locks",
+   "state": "CT",
+   "enplanementsCY25": 3283397
+  },
+  {
+   "locid": "BUR",
+   "hub": "M",
+   "name": "Hollywood Burbank",
+   "city": "Burbank",
+   "state": "CA",
+   "enplanementsCY25": 3218222
+  },
+  {
+   "locid": "CHS",
+   "hub": "M",
+   "name": "Charleston AFB/International",
+   "city": "Charleston",
+   "state": "SC",
+   "enplanementsCY25": 3142402
+  },
+  {
+   "locid": "MKE",
+   "hub": "M",
+   "name": "General Mitchell International",
+   "city": "Milwaukee",
+   "state": "WI",
+   "enplanementsCY25": 2889040
+  },
+  {
+   "locid": "ANC",
+   "hub": "M",
+   "name": "Ted Stevens Anchorage International",
+   "city": "Anchorage",
+   "state": "AK",
+   "enplanementsCY25": 2729285
+  },
+  {
+   "locid": "BOI",
+   "hub": "M",
+   "name": "Boise Air Trml/Gowen Field",
+   "city": "Boise",
+   "state": "ID",
+   "enplanementsCY25": 2579647
+  },
+  {
+   "locid": "OMA",
+   "hub": "M",
+   "name": "Eppley Airfield",
+   "city": "Omaha",
+   "state": "NE",
+   "enplanementsCY25": 2565135
+  },
+  {
+   "locid": "ABQ",
+   "hub": "M",
+   "name": "Albuquerque International Sunport",
+   "city": "Albuquerque",
+   "state": "NM",
+   "enplanementsCY25": 2562028
+  },
+  {
+   "locid": "BUF",
+   "hub": "M",
+   "name": "Buffalo Niagara International",
+   "city": "Buffalo",
+   "state": "NY",
+   "enplanementsCY25": 2533180
+  },
+  {
+   "locid": "RIC",
+   "hub": "M",
+   "name": "Richmond International",
+   "city": "Highland Springs",
+   "state": "VA",
+   "enplanementsCY25": 2481863
+  },
+  {
+   "locid": "ORF",
+   "hub": "M",
+   "name": "Norfolk International",
+   "city": "Norfolk",
+   "state": "VA",
+   "enplanementsCY25": 2466474
+  },
+  {
+   "locid": "RNO",
+   "hub": "S",
+   "name": "Reno/Tahoe International",
+   "city": "Reno",
+   "state": "NV",
+   "enplanementsCY25": 2420373
+  },
+  {
+   "locid": "MEM",
+   "hub": "S",
+   "name": "Frederick W Smith International/Memphis",
+   "city": "Memphis",
+   "state": "TN",
+   "enplanementsCY25": 2368014
+  },
+  {
+   "locid": "OKC",
+   "hub": "S",
+   "name": "Okc Will Rogers International",
+   "city": "Oklahoma City",
+   "state": "OK",
+   "enplanementsCY25": 2242888
+  },
+  {
+   "locid": "SRQ",
+   "hub": "S",
+   "name": "Sarasota/Bradenton International",
+   "city": "Sarasota",
+   "state": "FL",
+   "enplanementsCY25": 2242138
+  },
+  {
+   "locid": "SDF",
+   "hub": "S",
+   "name": "Louisville Muhammad Ali International",
+   "city": "Louisville",
+   "state": "KY",
+   "enplanementsCY25": 2237842
+  },
+  {
+   "locid": "GRR",
+   "hub": "S",
+   "name": "Gerald R Ford International",
+   "city": "Grand Rapids",
+   "state": "MI",
+   "enplanementsCY25": 2127668
+  },
+  {
+   "locid": "PVD",
+   "hub": "S",
+   "name": "Rhode Island Tf Green International",
+   "city": "Warwick",
+   "state": "RI",
+   "enplanementsCY25": 2117401
+  },
+  {
+   "locid": "GEG",
+   "hub": "S",
+   "name": "Spokane International",
+   "city": "Spokane",
+   "state": "WA",
+   "enplanementsCY25": 2106307
+  },
+  {
+   "locid": "SAV",
+   "hub": "S",
+   "name": "Savannah/Hilton Head International",
+   "city": "Savannah",
+   "state": "GA",
+   "enplanementsCY25": 2064691
+  },
+  {
+   "locid": "KOA",
+   "hub": "S",
+   "name": "Ellison Onizuka Kona International at Keahole",
+   "city": "Kailua Kona",
+   "state": "HI",
+   "enplanementsCY25": 2034749
+  },
+  {
+   "locid": "ELP",
+   "hub": "S",
+   "name": "El Paso International",
+   "city": "El Paso",
+   "state": "TX",
+   "enplanementsCY25": 1940314
+  },
+  {
+   "locid": "TUS",
+   "hub": "S",
+   "name": "Tucson International",
+   "city": "Tucson International Airport",
+   "state": "AZ",
+   "enplanementsCY25": 1891548
+  },
+  {
+   "locid": "LGB",
+   "hub": "S",
+   "name": "Long Beach (Daugherty Field)",
+   "city": "Long Beach",
+   "state": "CA",
+   "enplanementsCY25": 1867498
+  },
+  {
+   "locid": "LIH",
+   "hub": "S",
+   "name": "Lihue",
+   "city": "Lihue",
+   "state": "HI",
+   "enplanementsCY25": 1822008
+  },
+  {
+   "locid": "TYS",
+   "hub": "S",
+   "name": "McGhee Tyson",
+   "city": "Alcoa",
+   "state": "TN",
+   "enplanementsCY25": 1786752
+  },
+  {
+   "locid": "MYR",
+   "hub": "S",
+   "name": "Myrtle Beach International",
+   "city": "Myrtle Beach",
+   "state": "SC",
+   "enplanementsCY25": 1743132
+  },
+  {
+   "locid": "PSP",
+   "hub": "S",
+   "name": "Palm Springs International",
+   "city": "Palm Springs",
+   "state": "CA",
+   "enplanementsCY25": 1654109
+  },
+  {
+   "locid": "BHM",
+   "hub": "S",
+   "name": "Birmingham-Shuttlesworth International",
+   "city": "Birmingham",
+   "state": "AL",
+   "enplanementsCY25": 1615940
+  },
+  {
+   "locid": "TUL",
+   "hub": "S",
+   "name": "Tulsa International",
+   "city": "Tulsa",
+   "state": "OK",
+   "enplanementsCY25": 1597865
+  },
+  {
+   "locid": "DSM",
+   "hub": "S",
+   "name": "Des Moines International",
+   "city": "Des Moines",
+   "state": "IA",
+   "enplanementsCY25": 1596784
+  },
+  {
+   "locid": "ALB",
+   "hub": "S",
+   "name": "Albany International",
+   "city": "Albany",
+   "state": "NY",
+   "enplanementsCY25": 1573771
+  },
+  {
+   "locid": "SFB",
+   "hub": "S",
+   "name": "Orlando Sanford International",
+   "city": "Sanford",
+   "state": "FL",
+   "enplanementsCY25": 1553711
+  },
+  {
+   "locid": "PNS",
+   "hub": "S",
+   "name": "Pensacola International",
+   "city": "Pensacola",
+   "state": "FL",
+   "enplanementsCY25": 1519799
+  },
+  {
+   "locid": "GSP",
+   "hub": "S",
+   "name": "Greenville Spartanburg International",
+   "city": "Greer",
+   "state": "SC",
+   "enplanementsCY25": 1499920
+  },
+  {
+   "locid": "SYR",
+   "hub": "S",
+   "name": "Syracuse Hancock International",
+   "city": "Syracuse",
+   "state": "NY",
+   "enplanementsCY25": 1415346
+  },
+  {
+   "locid": "BZN",
+   "hub": "S",
+   "name": "Bozeman Yellowstone International",
+   "city": "Bozeman",
+   "state": "MT",
+   "enplanementsCY25": 1406833
+  },
+  {
+   "locid": "PIE",
+   "hub": "S",
+   "name": "St Pete-Clearwater International",
+   "city": "Clearwater",
+   "state": "FL",
+   "enplanementsCY25": 1398845
+  },
+  {
+   "locid": "FAT",
+   "hub": "S",
+   "name": "Fresno Yosemite International",
+   "city": "Fresno",
+   "state": "CA",
+   "enplanementsCY25": 1394397
+  },
+  {
+   "locid": "ROC",
+   "hub": "S",
+   "name": "Frederick Douglass/Greater Rochester International",
+   "city": "Rochester",
+   "state": "NY",
+   "enplanementsCY25": 1385078
+  },
+  {
+   "locid": "PWM",
+   "hub": "S",
+   "name": "Portland International Jetport",
+   "city": "Portland",
+   "state": "ME",
+   "enplanementsCY25": 1287041
+  },
+  {
+   "locid": "XNA",
+   "hub": "S",
+   "name": "Northwest Arkansas Ntl",
+   "city": "Bentonville",
+   "state": "AR",
+   "enplanementsCY25": 1234923
+  },
+  {
+   "locid": "COS",
+   "hub": "S",
+   "name": "City of Colorado Springs Municipal",
+   "city": "Colorado Springs",
+   "state": "CO",
+   "enplanementsCY25": 1230941
+  },
+  {
+   "locid": "MSN",
+   "hub": "S",
+   "name": "Dane County Regional/Truax Field",
+   "city": "Madison",
+   "state": "WI",
+   "enplanementsCY25": 1226462
+  },
+  {
+   "locid": "VPS",
+   "hub": "S",
+   "name": "Eglin AFB/Destin-Ft Walton Beach",
+   "city": "Valparaiso",
+   "state": "FL",
+   "enplanementsCY25": 1221553
+  },
+  {
+   "locid": "HPN",
+   "hub": "S",
+   "name": "Westchester County",
+   "city": "White Plains",
+   "state": "NY",
+   "enplanementsCY25": 1198585
+  },
+  {
+   "locid": "PGD",
+   "hub": "S",
+   "name": "Punta Gorda",
+   "city": "Punta Gorda",
+   "state": "FL",
+   "enplanementsCY25": 1140842
+  },
+  {
+   "locid": "LIT",
+   "hub": "S",
+   "name": "Bill and Hillary Clinton Ntl/Adams Field",
+   "city": "Little Rock",
+   "state": "AR",
+   "enplanementsCY25": 1126047
+  },
+  {
+   "locid": "AVL",
+   "hub": "S",
+   "name": "Asheville Regional",
+   "city": "Asheville",
+   "state": "NC",
+   "enplanementsCY25": 1114820
+  },
+  {
+   "locid": "IWA",
+   "hub": "S",
+   "name": "Mesa Gateway",
+   "city": "Mesa",
+   "state": "AZ",
+   "enplanementsCY25": 1032493
+  },
+  {
+   "locid": "GSO",
+   "hub": "S",
+   "name": "Piedmont Triad International",
+   "city": "Greensboro",
+   "state": "NC",
+   "enplanementsCY25": 1020112
+  },
+  {
+   "locid": "GUM",
+   "hub": "S",
+   "name": "Guam International",
+   "city": "Tamuning",
+   "state": "GU",
+   "enplanementsCY25": 966278
+  },
+  {
+   "locid": "ECP",
+   "hub": "S",
+   "name": "Northwest Florida Beaches International",
+   "city": "Panama City",
+   "state": "FL",
+   "enplanementsCY25": 947007
+  },
+  {
+   "locid": "ILM",
+   "hub": "S",
+   "name": "Wilmington International",
+   "city": "Wilmington",
+   "state": "NC",
+   "enplanementsCY25": 912516
+  },
+  {
+   "locid": "ICT",
+   "hub": "S",
+   "name": "Wichita Dwight D Eisenhower Ntl",
+   "city": "Wichita",
+   "state": "KS",
+   "enplanementsCY25": 909224
+  },
+  {
+   "locid": "HSV",
+   "hub": "S",
+   "name": "Huntsville International-Carl T Jones Field",
+   "city": "Huntsville",
+   "state": "AL",
+   "enplanementsCY25": 843482
+  },
+  {
+   "locid": "EUG",
+   "hub": "S",
+   "name": "Mahlon Sweet Field",
+   "city": "Eugene",
+   "state": "OR",
+   "enplanementsCY25": 838572
+  },
+  {
+   "locid": "MDT",
+   "hub": "S",
+   "name": "Harrisburg International",
+   "city": "Harrisburg",
+   "state": "PA",
+   "enplanementsCY25": 810498
+  },
+  {
+   "locid": "STT",
+   "hub": "S",
+   "name": "Cyril E King",
+   "city": "Charlotte Amalie",
+   "state": "VI",
+   "enplanementsCY25": 802734
+  },
+  {
+   "locid": "CID",
+   "hub": "S",
+   "name": "The Eastern Iowa",
+   "city": "Cedar Rapids",
+   "state": "IA",
+   "enplanementsCY25": 801353
+  },
+  {
+   "locid": "LEX",
+   "hub": "S",
+   "name": "Blue Grass",
+   "city": "Lexington",
+   "state": "KY",
+   "enplanementsCY25": 796256
+  },
+  {
+   "locid": "ISP",
+   "hub": "S",
+   "name": "Long Island MacArthur",
+   "city": "Islip",
+   "state": "NY",
+   "enplanementsCY25": 790218
+  },
+  {
+   "locid": "SGF",
+   "hub": "S",
+   "name": "Springfield-Branson Ntl",
+   "city": "Springfield",
+   "state": "MO",
+   "enplanementsCY25": 766308
+  },
+  {
+   "locid": "EYW",
+   "hub": "S",
+   "name": "Key West International",
+   "city": "Key West",
+   "state": "FL",
+   "enplanementsCY25": 760753
+  },
+  {
+   "locid": "MAF",
+   "hub": "S",
+   "name": "Midland International Air And Space Port",
+   "city": "Midland",
+   "state": "TX",
+   "enplanementsCY25": 760636
+  },
+  {
+   "locid": "FSD",
+   "hub": "S",
+   "name": "Joe Foss Field",
+   "city": "Sioux Falls",
+   "state": "SD",
+   "enplanementsCY25": 741643
+  },
+  {
+   "locid": "SBA",
+   "hub": "S",
+   "name": "Santa Barbara Municipal",
+   "city": "Santa Barbara",
+   "state": "CA",
+   "enplanementsCY25": 740028
+  },
+  {
+   "locid": "HVN",
+   "hub": "S",
+   "name": "Tweed/New Haven",
+   "city": "New Haven",
+   "state": "CT",
+   "enplanementsCY25": 737789
+  },
+  {
+   "locid": "BTV",
+   "hub": "S",
+   "name": "Patrick Leahy Burlington International",
+   "city": "Burlington",
+   "state": "VT",
+   "enplanementsCY25": 709881
+  },
+  {
+   "locid": "ITO",
+   "hub": "S",
+   "name": "Hilo International",
+   "city": "Hilo",
+   "state": "HI",
+   "enplanementsCY25": 703669
+  },
+  {
+   "locid": "MHT",
+   "hub": "S",
+   "name": "Manchester Boston Regional",
+   "city": "Manchester",
+   "state": "NH",
+   "enplanementsCY25": 685594
+  },
+  {
+   "locid": "CAE",
+   "hub": "S",
+   "name": "Columbia Metro",
+   "city": "Columbia",
+   "state": "SC",
+   "enplanementsCY25": 662756
+  },
+  {
+   "locid": "RDM",
+   "hub": "S",
+   "name": "Roberts Field/Redmond Municipal",
+   "city": "Redmond",
+   "state": "OR",
+   "enplanementsCY25": 645569
+  },
+  {
+   "locid": "DAY",
+   "hub": "S",
+   "name": "James M Cox Dayton International",
+   "city": "Dayton",
+   "state": "OH",
+   "enplanementsCY25": 637571
+  },
+  {
+   "locid": "CHA",
+   "hub": "S",
+   "name": "Lovell Field",
+   "city": "Chattanooga",
+   "state": "TN",
+   "enplanementsCY25": 631853
+  },
+  {
+   "locid": "ATW",
+   "hub": "S",
+   "name": "Appleton International",
+   "city": "Appleton",
+   "state": "WI",
+   "enplanementsCY25": 628853
+  },
+  {
+   "locid": "JAN",
+   "hub": "S",
+   "name": "Jackson-Medgar Wiley Evers International",
+   "city": "Jackson",
+   "state": "MS",
+   "enplanementsCY25": 600350
+  },
+  {
+   "locid": "FAR",
+   "hub": "S",
+   "name": "Hector International",
+   "city": "Fargo",
+   "state": "ND",
+   "enplanementsCY25": 598611
+  },
+  {
+   "locid": "HRL",
+   "hub": "S",
+   "name": "Valley International",
+   "city": "Harlingen",
+   "state": "TX",
+   "enplanementsCY25": 597403
+  },
+  {
+   "locid": "JAC",
+   "hub": "S",
+   "name": "Jackson Hole",
+   "city": "Jackson",
+   "state": "WY",
+   "enplanementsCY25": 572151
+  },
+  {
+   "locid": "LBB",
+   "hub": "S",
+   "name": "Lubbock Preston Smith International",
+   "city": "Lubbock",
+   "state": "TX",
+   "enplanementsCY25": 570308
+  },
+  {
+   "locid": "MFE",
+   "hub": "S",
+   "name": "McAllen International",
+   "city": "McAllen",
+   "state": "TX",
+   "enplanementsCY25": 568312
+  },
+  {
+   "locid": "FAI",
+   "hub": "S",
+   "name": "Fairbanks International",
+   "city": "Fairbanks",
+   "state": "AK",
+   "enplanementsCY25": 563672
+  },
+  {
+   "locid": "GPI",
+   "hub": "S",
+   "name": "Glacier Park International",
+   "city": "Kalispell",
+   "state": "MT",
+   "enplanementsCY25": 560572
+  },
+  {
+   "locid": "SBN",
+   "hub": "S",
+   "name": "South Bend International",
+   "city": "South Bend",
+   "state": "IN",
+   "enplanementsCY25": 551719
+  },
+  {
+   "locid": "MFR",
+   "hub": "S",
+   "name": "Rogue Valley International/Medford",
+   "city": "Medford",
+   "state": "OR",
+   "enplanementsCY25": 536021
+  },
+  {
+   "locid": "PVU",
+   "hub": "S",
+   "name": "Provo Municipal",
+   "city": "Provo",
+   "state": "UT",
+   "enplanementsCY25": 531126
+  },
+  {
+   "locid": "PSC",
+   "hub": "S",
+   "name": "Tri-Cities",
+   "city": "Pasco",
+   "state": "WA",
+   "enplanementsCY25": 525838
+  },
+  {
+   "locid": "MSO",
+   "hub": "S",
+   "name": "Missoula Montana",
+   "city": "Missoula",
+   "state": "MT",
+   "enplanementsCY25": 525225
+  },
+  {
+   "locid": "BIL",
+   "hub": "S",
+   "name": "Billings Logan International",
+   "city": "Billings",
+   "state": "MT",
+   "enplanementsCY25": 503097
+  }
+ ]
+}
