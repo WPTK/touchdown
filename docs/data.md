@@ -311,4 +311,4 @@ latitude and longitude, so Charlotte's aircraft are placed with the same project
 Atlanta at 50 NM. `?view=region`, `?view=clt` and `?loss` (plays the meme) are in the address bar for links and screenshots.
 
 Charlotte's demand is 60% of the slider. Weather, the shutdown and the frequency are still Atlanta's. Charlotte has its own
-S.E.A.N. and monitor, and enroute S.E.A.N. runs the sky until Relieve S.E.A.N. is pressed.
+S.E.A.N., and S.E.A.N. runs the enroute sky too, so its enroute losses show in the Region panel. Relieve S.E.A.N. never works there either.
