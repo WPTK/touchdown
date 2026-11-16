@@ -5,6 +5,10 @@ import { SCENARIOS, byId } from './scenarios.js';
 import { sharknadoMetar } from './wx-sean.js';
 import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
+import { PLACES } from './places.js';
+import { meter, real, selfReported } from './score.js';
+import { CUT_STAGES, floppyProgress } from './sean.js';
+import { ACHIEVEMENTS, checkAchievements, createTrophies } from './achievements.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -18,6 +22,7 @@ let sim;
 let ctl;
 let monitor;
 let trails;
+let trophies;
 let paused = false;
 let carry = 0;
 let lastFrame = performance.now();
@@ -50,6 +55,7 @@ function reset() {
   const skip = Number(new URLSearchParams(location.search).get('t')) || 0;
   while (sim.t < skip) step(sim, 1);
   trails = new Map();
+  trophies = createTrophies();
   carry = 0;
   $('seanFcst').hidden = true;
 }
@@ -64,6 +70,16 @@ function sampleTrails() {
     trails.set(a.id, t);
   }
   for (const id of trails.keys()) if (!live.has(id)) trails.delete(id);
+}
+
+function toast(title, text) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const b = document.createElement('b');
+  b.textContent = `Achievement unlocked: ${title}`;
+  el.append(b, text);
+  $('toasts').append(el);
+  setTimeout(() => el.remove(), 7000);
 }
 
 function resize() {
@@ -108,10 +124,22 @@ const runwaysLabel = (flow) => FLOWS[flow].runways.join(' ');
 
 function updatePanel() {
   updateWeatherPanel();
-  const losses = monitor.counts[PARA.SEP] || 0;
-  $('losses').textContent = losses;
-  $('losses').classList.toggle('bad', losses > 0);
-  $('landed').textContent = sim.landed.length;
+  const mine = selfReported(ctl.sean);
+  const truth = real(sim, monitor, ctl.sean);
+  $('sLanded').textContent = mine.landed;
+  $('sOnTime').textContent = `${mine.onTimePct}%`;
+  $('sDelays').textContent = mine.delays;
+  $('sSafety').textContent = mine.safety;
+  $('landed').textContent = truth.landedAtKatl;
+  $('elsewhere').textContent = truth.elsewhere;
+  $('rOnTime').textContent = `${truth.onTimePct}%`;
+  $('rDelay').textContent = `${truth.avgDelayMin} min`;
+  $('rHolds').textContent = truth.holds;
+  $('rGoArounds').textContent = truth.goArounds;
+  $('losses').textContent = truth.losses;
+  for (const id of ['rOnTime', 'rDelay', 'rHolds', 'rGoArounds', 'losses', 'elsewhere']) {
+    $(id).classList.toggle('bad', id === 'rOnTime' ? truth.onTimePct < 100 : id === 'rDelay' ? truth.avgDelayMin > 0 : Number($(id).textContent) > 0);
+  }
   $('clock').textContent = hms(sim.t);
   $('airborne').textContent = sim.aircraft.length;
   $('holding').textContent = sim.aircraft.filter((a) => a.phase === 'hold').length;
@@ -165,6 +193,49 @@ function updatePanel() {
       }),
   );
 
+  const m = meter(ctl.sean.billed);
+  $('mTotal').textContent = `$${m.totalB.toFixed(1)}B`;
+  $('mPayments').textContent = m.payments;
+  $('mAsk').textContent = `$${m.askB}B`;
+  $('mGao').textContent = m.gaoSchedules.toLocaleString('en-US');
+  $('mSean').textContent = `${m.seanSchedules} (${m.due})`;
+  const fp = floppyProgress(ctl.sean, sim.t);
+  $('floppyBox').hidden = !fp;
+  if (fp) {
+    $('floppy').value = fp.pct;
+    $('floppyText').textContent = `A:\\ D.U.F.F.Y. ${fp.version}, disk ${fp.disk} of 3, ${fp.pct}%`;
+  }
+  const points = truth.violations;
+  $('score').textContent = `${points} ${points === 1 ? 'point' : 'points'} (one per logged violation), ${trophies.unlocked.size} of ${ACHIEVEMENTS.length} achievements`;
+  $('trophies').replaceChildren(
+    ...ACHIEVEMENTS.map((a) => {
+      const li = document.createElement('li');
+      const got = trophies.unlocked.has(a.id);
+      li.className = got ? 'got' : '';
+      li.append(got ? a.title : '???');
+      const s = document.createElement('span');
+      s.textContent = got ? a.blurb : a.hint;
+      li.append(s);
+      return li;
+    }),
+  );
+  const sd = ctl.sean.shutdown;
+  $('shutdown').checked = sd.on;
+  $('shutdownOut').textContent = sd.on && sd.stage >= 0 ? `cut ${sd.stage + 1} of ${CUT_STAGES.length}: ${CUT_STAGES[sd.stage]}%, ${ctl.sean.cutTotal} deleted` : '';
+
+  $('where').replaceChildren(
+    ...Object.keys(PLACES).map((ident) => {
+      const li = document.createElement('li');
+      const p = document.createElement('span');
+      p.className = 'para';
+      p.textContent = `${PLACES[ident].short} (${PLACES[ident].where})`;
+      const c = document.createElement('span');
+      c.textContent = monitor.where[ident] || 0;
+      li.append(p, c);
+      return li;
+    }),
+  );
+
   $('sequence').replaceChildren(
     ...sim.queue.map((a, i) => {
       const li = document.createElement('li');
@@ -202,6 +273,10 @@ function frame(now) {
     }
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
   }
+  for (const a of checkAchievements(trophies, { sim, monitor, sean: ctl.sean })) {
+    toast(a.title, a.pride);
+    ctl.announce(sim, 'brag', `Achievement unlocked: ${a.title}. ${a.pride}`);
+  }
   const { width, height } = canvas.getBoundingClientRect();
   drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null });
   if (now - lastPanel > 250) {
@@ -220,6 +295,11 @@ $('demand').addEventListener('input', () => {
   setDemand(sim, Number($('demand').value));
 });
 $('reset').addEventListener('click', reset);
+$('shutdown').addEventListener('change', () => ctl.setShutdown(sim, $('shutdown').checked));
+$('relieve').addEventListener('click', () => {
+  ctl.relieve(sim);
+  updatePanel();
+});
 $('scenario').addEventListener('change', reset);
 window.addEventListener('resize', resize);
 

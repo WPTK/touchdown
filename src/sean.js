@@ -6,27 +6,63 @@
 
 import { mulberry32 } from './rng.js';
 import { FAF, outerAlt } from './sim.js';
-import { pick } from './comms.js';
+import { hasLine, pick, refusal } from './comms.js';
+import { PLACES, DIVERT_TO } from './places.js';
 import { pickFlow, weatherTick } from './wx-sean.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
-const FEED_MAX = 300;
+const FEED_MAX = 1000; // the panel shows 12; the rest is for the tests
 
 const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
 const STEP_RATES = [520, 520, 700, 900, 1200];
 
 export const BLIMP_KT = 35;
 
+export const FLOPPY_S = 150; // one upgrade, three disks
+export const FLOPPY_DISKS = 3;
+const LAND_THINGS = ['the highway', 'the parking deck', 'a rental car lot', 'the interstate', 'a very short road', 'the roof of the terminal'];
+
+// How far along an upgrade is, or null when none is installing.
+export function floppyProgress(sean, t) {
+  const f = sean.floppy;
+  if (!f) return null;
+  const pct = Math.min(100, Math.floor((100 * (t - f.startT)) / FLOPPY_S));
+  return { pct, disk: Math.min(FLOPPY_DISKS, 1 + Math.floor(((t - f.startT) / FLOPPY_S) * FLOPPY_DISKS)), version: f.version };
+}
+
+export const OUTAGE_S = 90; // the Newark and Philadelphia TRACON outages ran about that long (docs/research/atc-news-2026.md)
+// The 2025 shutdown's flight cuts at 40 airports, in order (docs/research/atc-news-2026.md). Each stage runs this long.
+export const CUT_STAGES = Object.freeze([4, 6, 3]);
+export const STAGE_S = 45 * 60;
+
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
+  // The newer features draw from their own stream, so they mostly leave the older ones alone. Text for the old
+  // events (a fuel-out, a diversion) still comes from `rng`, and every pick draws once even from a one-line list.
+  const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
+  const fexpo = (meanS) => -Math.log(1 - frng()) * meanS;
   let baseSpacingS = null;
   const sean = {
     feed: [], // { t, kind, text }, newest last
     credit: 0, // landings S.E.A.N. has taken credit for
     goArounds: 0,
-    diverted: [],
+    diverted: [], // everyone sent somewhere else: { t, callsign, ident }
+    enroute: [], // on their way to another field: { callsign, ident, requestT, landT }
+    elsewhereSeen: 0,
+    nextOutageT: 1500 + fexpo(2.5 * HOUR),
+    billed: 0, // separation losses S.E.A.N. has invoiced as down payments
+    lossCursor: 0,
+    lossLast: new Map(), // callsign pair -> last tick that pair was in breach
+    shutdown: { on: false, startT: 0, stage: -1, acc: 0, requestedSeen: 0 },
+    cutTotal: 0,
+    nextFloppyT: 900 + fexpo(1.5 * HOUR),
+    floppy: null, // an upgrade being installed: { startT, version, disk }
+    installs: 0,
+    version: 0,
+    relieveTries: 0,
+    relieved: false, // it never is
     blimpsSent: 0,
     ufosSeen: 0,
     landedSeen: 0,
@@ -44,7 +80,18 @@ export function createSean(seed = 1) {
     sean.feed.push({ t: sim.t, kind, text });
     if (sean.feed.length > FEED_MAX) sean.feed.shift();
   };
-  const line = (sim, feedKind, key, vars) => say(sim, feedKind, pick(key, rng, vars));
+  // A transmission to an aircraft may get a query from the pilot, and S.E.A.N. stands by what it said.
+  const pushback = (sim, key, vars, always = false) => {
+    if (!always && frng() >= 0.4) return;
+    say(sim, 'pilot', `${vars.cs}: ${pick(`q_${key}`, frng, vars)}`);
+    say(sim, 'tx', pick('confirm', frng, vars));
+  };
+  const speak = (sim, feedKind, key, vars, r) => {
+    say(sim, feedKind, pick(key, r, vars));
+    if (feedKind === 'tx' && vars?.cs && hasLine(`q_${key}`)) pushback(sim, key, vars);
+  };
+  const line = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, rng);
+  const lineF = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, frng);
   const fixName = (sim, a) => sim.geo.feeders[a.feeder].name;
   const onFinal = (sim, a) => a.phase === 'inner' && a.s > sim.geo.feeders[a.feeder].l1;
   const distRwy = (a) => Math.hypot(a.x, a.y);
@@ -74,11 +121,9 @@ export function createSean(seed = 1) {
     line(sim, 'brag', 'gaas', { cs: a.callsign, n: sean.goArounds });
   }
 
-  function divert(sim) {
+  // Takes the aircraft at queue position i out of the sequence; everyone behind it steps down a level.
+  function pull(sim, i) {
     const { cfg, queue } = sim;
-    const cands = queue.map((a, i) => i).filter((i) => i > 0 && queue[i].kind !== 'blimp' && queue[i].phase !== 'inner');
-    if (!cands.length) return;
-    const i = cands[Math.floor(rng() * cands.length)];
     const [a] = queue.splice(i, 1);
     for (const b of queue.slice(i)) {
       b.fromAlt = outerAlt(sim, b, sim.t);
@@ -86,9 +131,28 @@ export function createSean(seed = 1) {
       b.targetAlt = Math.max(cfg.baseLevelFt, b.targetAlt - cfg.levelStepFt);
     }
     sim.aircraft = sim.aircraft.filter((x) => x !== a);
-    sean.diverted.push({ t: sim.t, callsign: a.callsign });
-    line(sim, 'tx', 'divertTx', { cs: a.callsign });
-    line(sim, 'brag', 'divert', { cs: a.callsign });
+    return a;
+  }
+
+  // The aircraft leaves the scope and lands at `ident` after the flight time. S.E.A.N. counts the landing.
+  function sendElsewhere(sim, a, ident, key) {
+    const p = PLACES[ident];
+    const flightS = Math.max(120, Math.round((p.distNm / 200) * 3600));
+    sean.enroute.push({ callsign: a.callsign, ident, requestT: a.requestT, landT: sim.t + flightS });
+    sean.diverted.push({ t: sim.t, callsign: a.callsign, ident });
+    const vars = { cs: a.callsign, where: p.short };
+    line(sim, 'tx', `${key}Tx`, vars);
+    line(sim, 'brag', key, vars);
+  }
+
+  function divert(sim) {
+    const { queue } = sim;
+    const cands = queue.map((a, i) => i).filter((i) => i > 0 && queue[i].kind !== 'blimp' && queue[i].phase !== 'inner');
+    if (!cands.length) return;
+    const i = cands[Math.floor(rng() * cands.length)];
+    let r = frng();
+    const ident = (DIVERT_TO.find(([, w]) => (r -= w) < 0) ?? DIVERT_TO[0])[0];
+    sendElsewhere(sim, pull(sim, i), ident, 'divert');
   }
 
   function newUfo(sim) {
@@ -148,6 +212,32 @@ export function createSean(seed = 1) {
   const ctl = {
     sean,
 
+    // Lets the UI add a line to the feed (an unlocked achievement).
+    announce(sim, kind, text) {
+      say(sim, kind, text);
+    },
+
+    // The shutdown toggle: replays the 2025 cuts from now.
+    setShutdown(sim, on) {
+      const sd = sean.shutdown;
+      if (on === sd.on) return;
+      sd.on = on;
+      if (on) {
+        Object.assign(sd, { startT: sim.t, stage: -1, acc: 0, requestedSeen: sim.requested });
+        lineF(sim, 'brag', 'shutdownStart');
+      } else {
+        lineF(sim, 'brag', 'shutdownEnd');
+      }
+    },
+
+    // The Relieve S.E.A.N. button. It has never worked.
+    relieve(sim) {
+      sean.relieveTries++;
+      const text = refusal(sean.relieveTries);
+      say(sim, 'tx', text);
+      return text;
+    },
+
     // 3-5-1 says the runway most nearly aligned with the wind. S.E.A.N. takes the one with the most tailwind.
     pickFlow,
 
@@ -160,13 +250,103 @@ export function createSean(seed = 1) {
       }
       if (sim.weather) weatherTick(sim, sean.wx, say);
 
+      // Copper outage: the scope goes dark for 90 s. Traffic keeps moving and S.E.A.N. keeps talking.
+      const out = sim.outages.at(-1);
+      if (out && out.endT <= t && !out.said) {
+        out.said = true;
+        lineF(sim, 'brag', 'outageEnd', { s: out.endT - out.startT });
+      }
+      if (t >= sean.nextOutageT && !(out && out.endT > t)) {
+        sim.outages.push({ startT: t, endT: t + OUTAGE_S, said: false });
+        sean.nextOutageT = t + OUTAGE_S + 1800 + fexpo(2 * HOUR);
+        lineF(sim, 'brag', 'outageStart');
+      }
+      const dark = sim.outages.some((o) => t >= o.startT && t < o.endT);
+
+      // The meter: every separation loss is another down payment. S.E.A.N. cannot see one while the scope is dark.
+      if (!dark) {
+        for (; sean.lossCursor < sim.losses.length; sean.lossCursor++) {
+          const l = sim.losses[sean.lossCursor];
+          const key = [l.a, l.b].sort().join('|');
+          const last = sean.lossLast.get(key);
+          sean.lossLast.set(key, l.t);
+          if (last !== undefined && l.t - last <= 1.5) continue;
+          sean.billed++;
+          lineF(sim, 'blame', 'bill', { a: l.a, b: l.b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
+        }
+      }
+
+      // Shutdown mode: the cuts are made by deleting aircraft off the scope. Each cut counts as on time.
+      const sd = sean.shutdown;
+      if (sd.on) {
+        const stage = Math.floor((t - sd.startT) / STAGE_S);
+        if (stage >= CUT_STAGES.length) {
+          ctl.setShutdown(sim, false);
+        } else {
+          if (stage !== sd.stage) {
+            sd.stage = stage;
+            sd.acc = 0.75; // the first cut of a stage comes early, so it is visible
+            lineF(sim, 'brag', 'shutdownStage', { n: stage + 1, pct: CUT_STAGES[stage] });
+          }
+          sd.acc += (sim.requested - sd.requestedSeen) * (CUT_STAGES[stage] / 100);
+          sd.requestedSeen = sim.requested;
+          if (sd.acc >= 1) {
+            // The newest aircraft in line that has been on the scope long enough to be missed.
+            const i = queue.findLastIndex((a) => a.phase !== 'inner' && a.kind !== 'blimp' && t - a.spawnT >= 30);
+            if (i > 0) {
+              sd.acc -= 1;
+              const a = pull(sim, i);
+              sim.cut.push({ t, callsign: a.callsign });
+              sean.cutTotal++;
+              lineF(sim, 'tx', 'cutTx', { cs: a.callsign });
+              lineF(sim, 'brag', 'cut', { cs: a.callsign });
+            }
+          }
+        }
+      }
+
+      // Floppy disk upgrades: a progress bar, disk swaps, and a version number.
+      if (!sean.floppy && t >= sean.nextFloppyT) {
+        sean.floppy = { startT: t, version: `0.${sean.version + 1}`, disk: 1 };
+        lineF(sim, 'brag', 'floppyStart', { v: sean.floppy.version });
+        if (frng() < 0.4) lineF(sim, 'brag', 'floppyDrive');
+      } else if (sean.floppy) {
+        const p = floppyProgress(sean, t);
+        const f = sean.floppy;
+        if (p.pct >= 100) {
+          sean.version++;
+          sean.installs++;
+          sean.floppy = null;
+          sean.nextFloppyT = t + 900 + fexpo(1.5 * HOUR);
+          lineF(sim, 'brag', 'floppyEnd', { v: f.version, pct: 1 + Math.floor(frng() * 9) });
+        } else if (p.disk > f.disk) {
+          f.disk = p.disk;
+          lineF(sim, 'brag', 'floppyDisk', { n: p.disk, total: FLOPPY_DISKS });
+        }
+      }
+
+      // Flights that reach another field land there. S.E.A.N. counts them all.
+      if (sean.enroute.some((e) => e.landT <= t)) {
+        for (const e of sean.enroute.filter((x) => x.landT <= t).sort((x, y) => x.landT - y.landT)) {
+          sim.elsewhere.push({ t: e.landT, callsign: e.callsign, ident: e.ident, requestT: e.requestT });
+        }
+        sean.enroute = sean.enroute.filter((e) => e.landT > t);
+      }
+      for (; sean.elsewhereSeen < sim.elsewhere.length; sean.elsewhereSeen++) {
+        sean.credit++;
+        const l = sim.elsewhere[sean.elsewhereSeen];
+        const p = PLACES[l.ident];
+        lineF(sim, 'brag', 'landingElsewhere', { cs: l.callsign, n: sean.credit, where: p.short, nm: Math.round(p.distNm) });
+      }
+
       for (; sean.landedSeen < sim.landed.length; sean.landedSeen++) {
         sean.credit++;
         const l = sim.landed[sean.landedSeen];
         line(sim, 'brag', 'landing', { cs: l.callsign, n: sean.credit, pct: 12 + Math.floor(rng() * 380) });
       }
 
-      if (sim.losses.length > sean.lossSeen) {
+      // S.E.A.N. cannot see a loss while the scope is dark, so the blame waits for the picture too.
+      if (sim.losses.length > sean.lossSeen && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
         sean.lossSeen = sim.losses.length;
         if (t - sean.lastBlameT > 90) {
           sean.lastBlameT = t;
@@ -219,6 +399,16 @@ export function createSean(seed = 1) {
           line(sim, 'tx', 'speedTx', { cs: a.callsign, kt });
           line(sim, 'brag', 'speed', { kt });
         }
+        // Now and then a landing clearance that no pilot expects. The pilot asks, S.E.A.N. stands by it.
+        if (onFinal(sim, a) && a.landOdd === undefined && a.kind !== 'blimp') {
+          a.landOdd = frng() < 0.08;
+          if (a.landOdd) {
+            const vars = { cs: a.callsign, thing: LAND_THINGS[Math.floor(frng() * LAND_THINGS.length)] };
+            say(sim, 'tx', pick('landTx', frng, vars));
+            pushback(sim, 'landTx', vars, true);
+            say(sim, 'brag', pick('landBrag', frng, vars));
+          }
+        }
         if (a.kind === 'blimp' && a.phase === 'inner' && !a.ordered) {
           a.ordered = true;
           issueSpeed(sim, a, cfg.innerSpeedKt, false);
@@ -241,6 +431,10 @@ export function createSean(seed = 1) {
         const last = final.reduce((p, a) => (distRwy(a) > distRwy(p) ? a : p));
         if ((last.goArounds || 0) < 2 && queue.length < cfg.maxQueue) goAround(sim, last);
       }
+
+      // Out of fuel: the nearest field will do.
+      const dry = queue.findIndex((a, i) => i > 0 && a.fuelOut && a.phase !== 'inner' && a.kind !== 'blimp');
+      if (dry > 0) sendElsewhere(sim, pull(sim, dry), 'FIELD', 'fuelOut');
 
       if (queue.length >= 4 && rng() < 0.0004 * dt) divert(sim);
     },

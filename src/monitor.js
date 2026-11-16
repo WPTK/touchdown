@@ -9,6 +9,7 @@
 
 import { FAF, RUNWAY } from './sim.js';
 import { wakeMinNm } from './fleet.js';
+import { PLACES } from './places.js';
 import { CALM_KT, FLOWS, components } from './weather.js';
 
 const EPS = 1e-6;
@@ -22,6 +23,7 @@ export const PARA = Object.freeze({
   WAKE: '5-5-4 wake',
   UAP: '9-8-1',
   AARO: 'AIM 7-7-4',
+  OUTAGE: 'scope outage', // not a paragraph: what happened while the scope was dark
   RWY: '3-5-1',
 });
 
@@ -40,14 +42,47 @@ export function createMonitor() {
     inner: null, // { t, items } for aircraft on the inner path, last tick
     informed: new Set(), // UAP targets already reported (9-8-1)
     filed: new Set(), // UAP targets whose AARO line is logged (AIM 7-7-4)
+    holders: new Set(), // every aircraft seen in a holding pattern
+    landings: [], // where each aircraft actually came down: { t, callsign, ident, where }
+    where: {}, // landings per place
+    darkSince: null, // start of the outage in progress; what the monitor logs in that time is held back
+    held: [],
+    landedCursor: 0,
+    elsewhereCursor: 0,
   };
 }
 
 function log(m, t, para, title, ids, detail) {
   const v = { t, para, title, ids, detail };
+  if (m.darkSince !== null) {
+    m.held.push(v); // the scope is dark: it goes in the log when the picture comes back
+    return v;
+  }
   m.violations.push(v);
   m.counts[para] = (m.counts[para] || 0) + 1;
   return v;
+}
+
+// The scope is back. One entry says what the outage was, then everything the monitor saw during it goes in.
+function surface(m, t) {
+  const by = {};
+  for (const v of m.held) by[v.para] = (by[v.para] || 0) + 1;
+  const parts = Object.entries(by).map(([p, n]) => `${n} x ${p}`);
+  const entry = {
+    t,
+    para: PARA.OUTAGE,
+    title: `Scope dark for ${Math.round(t - m.darkSince)} s`,
+    ids: [],
+    detail: parts.length ? `While it was dark: ${parts.join(', ')}` : 'Nothing happened while it was dark',
+  };
+  m.violations.push(entry);
+  m.counts[PARA.OUTAGE] = (m.counts[PARA.OUTAGE] || 0) + 1;
+  for (const v of m.held) {
+    m.violations.push(v);
+    m.counts[v.para] = (m.counts[v.para] || 0) + 1;
+  }
+  m.held = [];
+  m.darkSince = null;
 }
 
 const name = (a) => a.callsign ?? `target ${a.id}`;
@@ -56,6 +91,9 @@ const distToRunway = (a) => Math.hypot(a.x - RUNWAY.x, a.y - RUNWAY.y);
 
 export function observe(m, sim) {
   const { t, aircraft, cfg } = sim;
+  const dark = sim.outages.some((o) => t >= o.startT && t < o.endT);
+  if (dark && m.darkSince === null) m.darkSince = sim.outages.find((o) => t >= o.startT && t < o.endT).startT;
+  if (!dark && m.darkSince !== null) surface(m, t);
   const byId = new Map(aircraft.map((a) => [a.id, a]));
   const seen = new Set();
   const flag = (key, para, title, ids, detail) => {
@@ -210,6 +248,18 @@ export function observe(m, sim) {
       m.filed.add(u.id);
       log(m, t, PARA.AARO, 'UAP report not sent to AARO', [u.id], 'Reports go to https://www.aaro.mil/. S.E.A.N. kept it in-house');
     }
+  }
+
+  // Where each one actually came down. Not a 7110.65 matter, so it is a ledger and not a violation.
+  for (const a of aircraft) if (a.phase === 'hold') m.holders.add(a.id);
+  const down = (l, ident) => {
+    m.landings.push({ t: l.landT ?? l.t, callsign: l.callsign, ident, where: PLACES[ident].short });
+    m.where[ident] = (m.where[ident] || 0) + 1;
+  };
+  for (; m.landedCursor < sim.landed.length; m.landedCursor++) down(sim.landed[m.landedCursor], 'KATL');
+  for (; m.elsewhereCursor < sim.elsewhere.length; m.elsewhereCursor++) {
+    const l = sim.elsewhere[m.elsewhereCursor];
+    down(l, l.ident);
   }
 
   for (const key of m.active.keys()) if (!seen.has(key)) m.active.delete(key);

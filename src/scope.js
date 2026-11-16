@@ -71,6 +71,19 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   const RUNWAY = sim.geo.runway;
   ctx.fillStyle = '#050b08';
   ctx.fillRect(0, 0, width, height);
+  if (sim.outages.some((o) => sim.t >= o.startT && sim.t < o.endT)) {
+    // Copper outage: nothing on the scope, and the traffic is still out there.
+    ctx.fillStyle = '#0a1410';
+    ctx.fillRect(0, 0, width, height);
+    ctx.font = '14px ui-monospace, "Cascadia Mono", Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff5c5c';
+    ctx.fillText('SURVEILLANCE LOST', width / 2, height / 2 - 10);
+    ctx.fillStyle = '#5f8270';
+    ctx.fillText('radar and voice circuit down', width / 2, height / 2 + 12);
+    ctx.textAlign = 'left';
+    return;
+  }
   ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
   ctx.textBaseline = 'middle';
   drawPrecip(ctx, sim, { px, py, scale });

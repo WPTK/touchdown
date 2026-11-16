@@ -120,6 +120,20 @@ positions, copper telecom, surveillance gaps, staffing and training success, ale
 **Commentary:** automation raises controller workload before it lowers it
 ([Leeham](https://leehamnews.com/2026/09/23/automation-doesnt-reduce-atc-workload-not-at-first/)).
 
+## 4a. Floppy disks, Nov 5, 2026
+
+- **FOX 29, Nov 5, 2026** (read directly,
+  [FOX 29](https://fox29.com/news/faa-finally-phase-out-floppy-disks-from-air-traffic-control-systems-2028)): the FAA
+  plans to finish replacing systems that still use floppy disks by 2028, at "hundreds" of facilities that use them for
+  weather and other critical information. The agency relies on decades-old Compaq computers and "replacement parts it
+  purchases on eBay, Reuters reported." The article repeats the $12.5B and the $30B ask.
+- **DOT announcement, Nov 5, 2026** *(secondary)*
+  ([DOT](https://www.transportation.gov/briefing-room/trumps-transportation-secretary-sean-p-duffy-begins-retiring-decades-old-floppy-disks)).
+  The claims that DOT is replacing the floppies with E-IDS at 435 sites by the end of 2028, and that Duffy said "Good news
+  America: floppy disks are out, 21st century tech is in," come from the project brief and the page's title, not from
+  the page. transportation.gov answered `403` to a plain `curl` and to the WebFetch tool on 2026-11-16, so the quote is
+  unverified here. Check it against the page in a browser before quoting it anywhere that matters.
+
 ## 5. Atlanta
 
 - A80: 79 certified controllers against a target of 100, 44% training success, about 1.19M operations a year

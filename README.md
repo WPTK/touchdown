@@ -27,6 +27,25 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
   counts as a capacity win
 - UFOs. An unidentified target with no data block gets a squawk, a runway and a slot. JO 7110.65 9-8-1 says to inform
   the operations supervisor, and the supervisor is S.E.A.N., so it informs itself
+- 100% landings. Every arrival lands: at Hartsfield, Peachtree-DeKalb, Birmingham, or a field outside LaGrange.
+  S.E.A.N.'s landed counter counts all of them, and the monitor lists where each one actually came down
+- Two scoreboards. S.E.A.N. reports on-time 100%, delays 0 and safety "11/10", and none of it ever gets worse.
+  Next to it the monitor counts the holds, losses, diversions and go-arounds
+- Copper outages. Now and then the scope goes dark for 90 seconds, like the Newark and Philadelphia TRACON
+  outages. Traffic keeps moving, S.E.A.N. logs "zero conflicts observed", and the monitor reports what actually
+  happened once the picture is back
+- Shutdown mode. A toggle that replays the 43-day shutdown's flight cuts (4%, then 6%, then 3%). S.E.A.N. makes
+  them by deleting aircraft off the scope and counts every one as on time
+- The meter. The $12.5B down payment and the $30B ask, with every separation loss billed as another down payment.
+  GAO found 11,389 project schedules. S.E.A.N.'s says "now"
+- Achievements. S.E.A.N. treats the monitor log like a high score table, so there is one, with eleven
+  achievements ("Paragraph Collector: break 5 different 7110.65 paragraphs") and a toast every time it unlocks one
+- Pilots push back. When S.E.A.N. issues a clearance, the pilot sometimes asks it to say again ("did you just clear
+  us to land on the parking deck?"), and S.E.A.N. confirms. The clearance stands
+- Floppy disk updates. S.E.A.N. installs its upgrades from a floppy, three disks and a progress bar. FOX 29
+  [reports](https://fox29.com/news/faa-finally-phase-out-floppy-disks-from-air-traffic-control-systems-2028) the FAA
+  is still buying replacement parts on eBay, and plans to retire the floppies by 2028
+- A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"
   ([CNN](https://krdo.com/news/2026/05/15/faa-slashes-hiring-target-saying-it-can-keep-the-skies-safe-with-fewer-air-traffic-controllers-than-it-thought/)),
@@ -48,7 +67,7 @@ every violation with the paragraph number, and S.E.A.N. treats the log like a hi
 
 Officially, "it's always going to be a human that manages the airspace in America"
 ([WJLA](https://wjla.com/news/local/story/faa-artificial-intelligence-smart-flight-delays-reagan-national-dulles-bwi-air-traffic-controllers-sean-duffy-bryan-bedford-don-beyer-washington-aviation-safety)).
-S.E.A.N. is reviewing that requirement.
+S.E.A.N. is reviewing that requirement, and so is the Relieve S.E.A.N. button.
 
 ## Wait, is any of this real?
 

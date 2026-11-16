@@ -17,9 +17,28 @@
         <p class="disclaimer">Parody. Not affiliated with the FAA or DOT, and it doesn't control real aircraft (please don't let it).</p>
       </header>
 
-      <section class="status" aria-live="polite">
-        <div class="big"><span id="losses">0</span><label>separation losses</label></div>
-        <div class="big"><span id="landed">0</span><label>landed</label></div>
+      <section class="boards" aria-live="polite">
+        <div class="board sean">
+          <h2>S.E.A.N. reports</h2>
+          <dl>
+            <dt>Landed</dt><dd id="sLanded">0</dd>
+            <dt>On time</dt><dd id="sOnTime">100%</dd>
+            <dt>Delays</dt><dd id="sDelays">0</dd>
+            <dt>Safety</dt><dd id="sSafety">11/10</dd>
+          </dl>
+        </div>
+        <div class="board real">
+          <h2>Monitor counts</h2>
+          <dl>
+            <dt>Landed at KATL</dt><dd id="landed">0</dd>
+            <dt>Landed elsewhere</dt><dd id="elsewhere">0</dd>
+            <dt>On time</dt><dd id="rOnTime">100%</dd>
+            <dt>Avg delay</dt><dd id="rDelay">0 min</dd>
+            <dt>Holds</dt><dd id="rHolds">0</dd>
+            <dt>Go-arounds</dt><dd id="rGoArounds">0</dd>
+            <dt>Separation losses</dt><dd id="losses">0</dd>
+          </dl>
+        </div>
       </section>
 
       <dl class="stats">
@@ -62,6 +81,8 @@
         <label class="slider"><span>Demand <output id="demandOut">24</output> arrivals/h</span>
           <input id="demand" type="range" min="0" max="60" step="1" value="24">
         </label>
+        <button id="relieve" type="button">Relieve S.E.A.N.</button>
+        <label class="check"><input id="shutdown" type="checkbox"> Shutdown mode <output id="shutdownOut"></output></label>
         <label class="slider"><span>Weather (real KATL days)</span>
           <select id="scenario"><option value="">None (calm)</option></select>
         </label>
@@ -69,6 +90,23 @@
           <label>Seed <input id="seed" type="number" min="1" value="1"></label>
           <button id="reset" type="button">Reset</button>
         </div>
+      </section>
+
+      <section class="meter" aria-live="polite">
+        <h2>The meter</h2>
+        <dl class="stats">
+          <dt>Spent</dt><dd id="mTotal">$12.5B</dd>
+          <dt>Down payments</dt><dd id="mPayments">1</dd>
+          <dt>Next ask</dt><dd id="mAsk">$30B</dd>
+          <dt>GAO: project schedules</dt><dd id="mGao">11,389</dd>
+          <dt>S.E.A.N.: project schedule</dt><dd id="mSean">1 (now)</dd>
+        </dl>
+      </section>
+
+      <section class="floppy" id="floppyBox" hidden>
+        <h2>Upgrade in progress</h2>
+        <p id="floppyText">A:\ </p>
+        <progress id="floppy" max="100" value="0"></progress>
       </section>
 
       <section>
@@ -83,11 +121,23 @@
       </section>
 
       <section>
+        <h2>High scores</h2>
+        <p id="score" class="score"></p>
+        <ul id="trophies" class="trophies"></ul>
+      </section>
+
+      <section>
+        <h2>Where they came down</h2>
+        <ul id="where" class="counts where"></ul>
+      </section>
+
+      <section>
         <h2>Sequence</h2>
         <ol id="sequence" class="strips"></ol>
       </section>
     </aside>
   </main>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
