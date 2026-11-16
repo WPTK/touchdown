@@ -1,13 +1,14 @@
-// Writes data/classb-atl.json: the KATL Class B shelves from the FAA's Class Airspace feature service, projected the same
+// Writes data/classb-<ident>.json: one airport's Class B shelves from the FAA's Class Airspace feature service, projected the same
 // way as data/katl-*.json (NM east and north of the airport reference point). The monitor uses them for 14 CFR 91.117(c):
 // no more than 200 kt in the airspace underlying a Class B area.
-// usage: node scripts/classb.js [output]     (needs network; the FAA service takes no key)
-import { writeFileSync } from 'node:fs';
+// usage: node scripts/classb.js [FAA ident, default ATL] [airport json, default data/katl-2611.json] [output]   (needs network; the FAA service takes no key)
+// The projection origin is the airport reference point in the airport json, so each file is in its own airport's frame.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { makeProjection } from './cifp.js';
 
-const URL =
-  'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query?where=IDENT%3D%27ATL%27+AND+CLASS%3D%27B%27&outFields=*&f=geojson';
-const ARP = { lat: 33.6367, lon: -84.42786389 }; // the same reference point as data/katl-2611.json
+const [IDENT = 'ATL', AIRPORT_JSON = 'data/katl-2611.json', OUT = `data/classb-${IDENT.toLowerCase()}.json`] = process.argv.slice(2);
+const URL = `https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query?where=IDENT%3D%27${IDENT}%27+AND+CLASS%3D%27B%27&outFields=*&f=geojson`;
+const ARP = JSON.parse(readFileSync(AIRPORT_JSON, 'utf8')).airport; // the airport reference point of the airport json
 const TOL_NM = 0.02; // Douglas-Peucker tolerance: the outlines carry a vertex every few hundred feet
 
 function simplify(pts, tol) {
@@ -50,10 +51,10 @@ const areas = gj.features.map((f) => {
   };
 });
 const out = {
-  source: { service: 'FAA Class_Airspace feature service (ArcGIS), IDENT=ATL, CLASS=B', url: URL, retrieved: new Date().toISOString().slice(0, 10), tool: 'scripts/classb.js' },
+  source: { service: `FAA Class_Airspace feature service (ArcGIS), IDENT=${IDENT}, CLASS=B`, url: URL, retrieved: new Date().toISOString().slice(0, 10), tool: 'scripts/classb.js' },
   simplifiedToleranceNm: TOL_NM,
-  projection: 'same as data/katl-2611.json',
+  projection: `same as ${AIRPORT_JSON}`,
   areas,
 };
-writeFileSync(process.argv[2] ?? 'data/classb-atl.json', JSON.stringify(out) + '\n');
+writeFileSync(OUT, JSON.stringify(out) + '\n');
 console.log(`${areas.length} areas, ${areas.reduce((n, a) => n + a.ring.length, 0)} vertices`);
