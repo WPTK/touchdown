@@ -26,6 +26,12 @@ export function altitude(ft) {
 }
 
 // "Flight level one eight zero."
+// Ten minutes later on the clock, so a misread 1855 is 1905 and never the 1865 that cannot exist.
+const addTenMinutes = (hhmm) => {
+  const m = (Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(2)) + 10) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + String(m % 60).padStart(2, '0');
+};
+
 export const flightLevel = (fl) => `flight level ${digits(fl)}`;
 
 // "Heading zero three zero". 360 is the north heading, never 000.
@@ -124,7 +130,7 @@ export function misread(c, rng) {
   switch (c.kind) {
     case 'descend':
     case 'climb':
-      return { ...c, alt: c.alt + (r < 0.5 ? -1000 : 1000) };
+      return { ...c, alt: Math.max(1000, c.alt + (r < 0.5 ? -1000 : 1000)) }; // never a readback of zero feet
     case 'speed':
       return { ...c, kt: c.kt + (r < 0.5 ? -10 : 10) };
     case 'heading':
@@ -139,7 +145,7 @@ export function misread(c, rng) {
     case 'contact':
       return { ...c, freq: (Number(c.freq) + (r < 0.5 ? -0.2 : 0.2)).toFixed(c.freq.split('.')[1]?.length ?? 1) };
     case 'hold':
-      return c.efc ? { ...c, efc: String(Number(c.efc) + 10).padStart(4, '0') } : null;
+      return c.efc ? { ...c, efc: addTenMinutes(c.efc) } : null;
     default:
       return null;
   }

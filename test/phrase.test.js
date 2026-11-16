@@ -1,6 +1,7 @@
 // Phraseology against the examples quoted in JO 7110.65 (2-4-17 numbers usage, 4-6-1, 4-8-1, 5-7-2, 3-10-5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mulberry32 } from '../src/rng.js';
 import {
   altimeter, altitude, callsign, digits, flightLevel, frequency, heading, misread, readback, render, runway, speed, speedTo,
   spokenVars, squawk, stepOn, utc, wind, KINDS,
@@ -121,4 +122,21 @@ test('a stepped-on transmission loses words in the middle and keeps its start', 
 test('transmission variables are spoken: call sign, altitude, speed and code in words', () => {
   const v = spokenVars({ cs: 'PEACH412', alt: 11000, kt: 180, sq: 1234, n: 3, where: 'Birmingham' });
   assert.deepEqual(v, { cs: 'Peach four one two', alt: 'one one thousand', kt: 'one eight zero', sq: 'one two three four', n: 'three', where: 'Birmingham' });
+});
+
+test('a misread further-clearance time is a time that exists, and a misread altitude is never zero', () => {
+  const seen = new Set();
+  for (let i = 0; i < 20; i++) {
+    const w = misread({ kind: 'hold', cs: 'PEACH1', fix: 'HOGGG', efc: '1855' }, mulberry32(i));
+    if (w) seen.add(w.efc);
+  }
+  assert.ok(seen.size > 0);
+  for (const e of seen) assert.match(e, /^([01][0-9]|2[0-3])[0-5][0-9]$/);
+  assert.ok(seen.has('1905'));
+  const late = misread({ kind: 'hold', cs: 'PEACH1', fix: 'HOGGG', efc: '2355' }, mulberry32(1));
+  if (late) assert.equal(late.efc, '0005');
+  for (let i = 0; i < 40; i++) {
+    const w = misread({ kind: 'descend', cs: 'PEACH1', alt: 1000 }, mulberry32(i));
+    if (w) assert.ok(w.alt >= 1000);
+  }
 });
