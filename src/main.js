@@ -65,7 +65,7 @@ function reset() {
   trophies = createTrophies();
   carry = 0;
   $('seanFcst').hidden = true;
-  if (listener.on) listener.enable(ctl.sean.feed); // a new run, so read from its start
+  if (listener.on) listener.enable(ctl.sean.feed, paused); // a new run, so read from its start
 }
 
 function sampleTrails() {
@@ -339,7 +339,7 @@ for (const box of document.querySelectorAll('[data-filter]')) {
 $('listen').disabled = !listener.state.available;
 $('listenOut').textContent = listener.state.available ? '' : 'no speech in this browser';
 $('listen').addEventListener('change', () => {
-  if ($('listen').checked && !listener.enable(ctl.sean.feed)) $('listen').checked = false;
+  if ($('listen').checked && !listener.enable(ctl.sean.feed, paused)) $('listen').checked = false;
   else if (!$('listen').checked) listener.disable();
 });
 $('scenario').addEventListener('change', reset);

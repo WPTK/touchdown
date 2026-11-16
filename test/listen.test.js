@@ -5,19 +5,30 @@ import { browserDeps, createListener, pickVoices, spokenKinds, squelchSamples, t
 
 function fakes(voices = []) {
   const said = [];
+  const timers = [];
   let squelches = 0;
+  const calls = [];
   const synth = {
     speak: (u) => said.push(u),
     cancel: () => said.splice(0),
-    pause() {},
-    resume() {},
+    pause: () => calls.push('pause'),
+    resume: () => calls.push('resume'),
   };
   return {
     said,
+    calls,
     get squelches() {
       return squelches;
     },
-    deps: { synth, makeUtterance: (text) => ({ text }), voices: () => voices, squelch: () => squelches++ },
+    timers,
+    deps: {
+      synth,
+      makeUtterance: (text) => ({ text }),
+      voices: () => voices,
+      squelch: () => squelches++,
+      setTimer: (fn, ms) => timers.push({ fn, ms }) - 1,
+      clearTimer: (i) => { timers[i] = null; },
+    },
   };
 }
 const line = (kind, text, t = 1) => ({ t, kind, text });
@@ -133,4 +144,62 @@ test('the squelch is a short burst of noise that dies away, and the same every t
   assert.ok(mag(0, 500) > 5 * mag(a.length - 500, a.length), 'it fades');
   assert.ok(a.every((x) => Math.abs(x) <= 0.25));
   assert.ok(a.some((x) => x !== 0));
+});
+
+test('an old utterance that ends after Listen is switched off and on again cannot talk over the new one', () => {
+  const f = fakes();
+  const l = createListener(f.deps);
+  const feed = [];
+  l.enable(feed);
+  feed.push(line('tx', 'old one'), line('tx', 'old two'));
+  l.update(feed);
+  const stale = f.said[0];
+  l.disable();
+  l.enable(feed);
+  feed.push(line('tx', 'new one'), line('tx', 'new two'));
+  l.update(feed);
+  assert.deepEqual(f.said.map((u) => u.text), ['new one']);
+  stale.onerror(); // chrome reports the cancelled utterance late
+  assert.equal(f.said.length, 1, 'new two waits for new one to end');
+  assert.equal(l.state.spoken, 0);
+});
+
+test('enable starts over for a new run, and a cancelled synth is not left paused', () => {
+  const f = fakes();
+  const l = createListener(f.deps);
+  const feed = [];
+  l.enable(feed);
+  feed.push(line('tx', 'one'), line('tx', 'two'));
+  l.update(feed);
+  f.calls.length = 0;
+  l.enable([]); // reset: the old run's speech is cut off and its queue dropped
+  assert.equal(f.said.length, 0);
+  assert.equal(l.state.queue.length, 0);
+  assert.ok(f.calls.includes('resume'), 'cancel does not clear a pause, so resume follows it');
+  l.enable([], true);
+  assert.ok(f.calls.at(-1) === 'pause', 'ticked while the sim is paused: the radio starts paused');
+  l.hold(false);
+  assert.equal(f.calls.at(-1), 'resume');
+});
+
+test('an error moves on to the next call, and a stuck engine is moved on by the watchdog', () => {
+  const f = fakes();
+  const l = createListener(f.deps);
+  const feed = [];
+  l.enable(feed);
+  feed.push(line('tx', 'first call here'), line('tx', 'second'));
+  l.update(feed);
+  f.said[0].onerror();
+  assert.equal(f.said.length, 2, 'error advances');
+  // The second never reports its end: the timer is the way out.
+  const t = f.timers.filter(Boolean).at(-1);
+  assert.equal(t.ms, 'second'.length * 100 + 2000);
+  t.fn();
+  assert.equal(l.state.speaking, false);
+  assert.equal(l.state.spoken, 2);
+});
+
+test('acronyms only change as whole words', () => {
+  assert.equal(toSpeech('Cleared ILS runway two six right.'), 'Cleared I L S runway two six right.');
+  assert.equal(toSpeech('RAILS and the PIREPS'), 'RAILS and the PIREPS');
 });

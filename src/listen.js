@@ -16,7 +16,7 @@ const LETTERS = { ILS: 'I L S', ATIS: 'A T I S', PIREP: 'pirep', UAP: 'U A P', A
 export function toSpeech(text) {
   let t = text.replace(/^([A-Z]{3,})(\d+): /, (_, w, d) => `${w[0]}${w.slice(1).toLowerCase()} ${d.split('').join(' ')}: `);
   t = t.replace(/\[blocked\]/g, '...');
-  for (const [from, to] of Object.entries(LETTERS)) t = t.split(from).join(to);
+  for (const [from, to] of Object.entries(LETTERS)) t = t.replace(new RegExp(`(?<![A-Za-z])${from.replaceAll('.', '\.')}(?![A-Za-z])`, 'g'), to);
   return t.replace(/\bPEACH(\d+)\b/g, (_, d) => `Peach ${d.split('').join(' ')}`).replace(/\s+/g, ' ').trim();
 }
 
@@ -46,34 +46,58 @@ export function squelchSamples(sampleRate, ms = 90, seed = 7) {
   return out;
 }
 
-// The listener. `deps`: { synth, makeUtterance(text), voices(), squelch() }. Any of them may be missing (no speech in
-// this browser), and then it says so through `available` and does nothing.
+// The listener. `deps`: { synth, makeUtterance(text), voices(), squelch(), unlock(), setTimer, clearTimer }. Any of them may be
+// missing (no speech in this browser), and then it says so through `available` and does nothing.
 export function createListener(deps = {}) {
-  const { synth, makeUtterance, voices, squelch } = deps;
+  const { synth, makeUtterance, voices, squelch, unlock } = deps;
+  const setTimer = deps.setTimer ?? globalThis.setTimeout?.bind(globalThis);
+  const clearTimer = deps.clearTimer ?? globalThis.clearTimeout?.bind(globalThis);
   const available = !!(synth && makeUtterance);
-  const state = { on: false, last: null, queue: [], speaking: false, spoken: 0, dropped: 0, available };
+  const state = { on: false, last: null, queue: [], speaking: false, spoken: 0, dropped: 0, available, current: null };
   const MAX_QUEUE = 3; // the sim runs faster than anyone can talk: the newest calls win
+  let gen = 0; // bumped on every enable and disable, so a late callback from an old utterance is ignored
+  let timer = null;
+
+  function stop() {
+    gen++;
+    state.queue = [];
+    state.speaking = false;
+    state.current = null; // chrome drops onend on an utterance nobody holds, so `current` is held until it ends
+    if (timer != null) clearTimer?.(timer);
+    timer = null;
+    synth?.cancel?.();
+    synth?.resume?.(); // cancel does not clear a pause, and a paused synth says nothing and never ends
+  }
 
   function next() {
     if (!state.on || state.speaking || !state.queue.length) return;
     const line = state.queue.shift();
     const who = spokenKinds(line.kind);
     const v = pickVoices(voices?.() ?? [])[who];
-    const u = makeUtterance(toSpeech(line.text));
+    const text = toSpeech(line.text);
+    const u = makeUtterance(text);
     if (v?.voice) u.voice = v.voice;
     if (v) {
       u.pitch = v.pitch;
       u.rate = v.rate;
     }
+    const mine = gen;
     state.speaking = true;
+    state.current = u;
     const done = () => {
+      if (mine !== gen || !state.speaking) return; // an old utterance, or the watchdog already moved on
+      if (timer != null) clearTimer?.(timer);
+      timer = null;
       state.speaking = false;
+      state.current = null;
       state.spoken++;
       squelch?.();
       next();
     };
     u.onend = done;
     u.onerror = done;
+    // Speech engines sometimes never report the end. About a tenth of a second a character, plus two seconds of slack.
+    timer = setTimer?.(done, text.length * 100 + 2000) ?? null;
     squelch?.();
     synth.speak(u);
   }
@@ -83,18 +107,21 @@ export function createListener(deps = {}) {
     get on() {
       return state.on;
     },
-    // Turn it on at the end of the feed: it reads what is said from now, not the backlog.
-    enable(feed) {
+    // Turn it on at the end of the feed: it reads what is said from now, not the backlog. Also the way to start over for
+    // a new run: anything still being said from the old one is cut off. Call it from the click that ticks the box so
+    // the browser lets the audio start.
+    enable(feed, paused = false) {
       if (!available) return false;
+      stop();
+      unlock?.();
       state.on = true;
       state.last = feed.at(-1) ?? null;
+      if (paused) synth.pause?.();
       return true;
     },
     disable() {
       state.on = false;
-      state.queue = [];
-      state.speaking = false;
-      synth?.cancel?.();
+      stop();
     },
     // Called every frame with the feed (oldest first). Queues the new lines that are on the radio.
     update(feed) {
@@ -128,15 +155,27 @@ export function browserDeps(win = globalThis) {
   const Utter = win.SpeechSynthesisUtterance;
   if (!synth || !Utter) return {};
   let ac = null;
+  const context = () => {
+    const Ctx = win.AudioContext ?? win.webkitAudioContext;
+    if (!Ctx) return null;
+    try {
+      ac ??= new Ctx();
+      return ac;
+    } catch {
+      return null;
+    }
+  };
   return {
+    // Made in the click that ticks Listen: safari and ios only start audio from a gesture.
+    unlock() {
+      context()?.resume?.();
+    },
     synth,
     makeUtterance: (text) => new Utter(text),
     voices: () => synth.getVoices(),
     squelch() {
-      const Ctx = win.AudioContext ?? win.webkitAudioContext;
-      if (!Ctx) return;
       try {
-        ac ??= new Ctx();
+        if (!context()) return;
         const data = squelchSamples(ac.sampleRate);
         const buf = ac.createBuffer(1, data.length, ac.sampleRate);
         buf.copyToChannel(data, 0);
