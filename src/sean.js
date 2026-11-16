@@ -7,6 +7,7 @@
 import { mulberry32 } from './rng.js';
 import { FAF, outerAlt } from './sim.js';
 import { pick } from './comms.js';
+import { pickFlow, weatherTick } from './wx-sean.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
@@ -36,6 +37,7 @@ export function createSean(seed = 1) {
     blimpId: null,
     blimpWinSaid: false,
     started: false,
+    wx: {}, // weather state, see wx-sean.js
   };
 
   const say = (sim, kind, text) => {
@@ -146,6 +148,9 @@ export function createSean(seed = 1) {
   const ctl = {
     sean,
 
+    // 3-5-1 says the runway most nearly aligned with the wind. S.E.A.N. takes the one with the most tailwind.
+    pickFlow,
+
     beforeStep(sim, dt) {
       const { cfg, queue } = sim;
       const t = sim.t;
@@ -153,6 +158,7 @@ export function createSean(seed = 1) {
         sean.started = true;
         line(sim, 'brag', 'online');
       }
+      if (sim.weather) weatherTick(sim, sean.wx, say);
 
       for (; sean.landedSeen < sim.landed.length; sean.landedSeen++) {
         sean.credit++;
