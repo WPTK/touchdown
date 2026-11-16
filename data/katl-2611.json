@@ -360,7 +360,7 @@
      "raw": "SUSAP KATLK7FI08L  I      010BAZARK7PC0E  I    IF IHFWK7      27500118        PI  J 040000290018000                 0 NS   264101310",
      "fixKey": "BAZAR|K7|PC",
      "recommendedNavaidKey": "IHFW|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -622,7 +622,7 @@
      "raw": "SUSAP KATLK7FI08R  I      010NZBITK7PC0E  I    IF IATLK7      27500119        PI  J 040000280018000                 0 NS   264221310",
      "fixKey": "NZBIT|K7|PC",
      "recommendedNavaidKey": "IATL|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -905,7 +905,7 @@
      "raw": "SUSAP KATLK7FI09L  I      010ARRBEK7PC0E  I    IF IHZKK7      27500157        PI  J 050000270018000                 0 DS   264352104",
      "fixKey": "ARRBE|K7|PC",
      "recommendedNavaidKey": "IHZK|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 11,
@@ -927,7 +927,7 @@
      "raw": "SUSAP KATLK7FI09L  I      011HRDEYK7PC0E       CF IHZKK7      2750012309500035PI  + 04000                           0 DS   264362104",
      "fixKey": "HRDEY|K7|PC",
      "recommendedNavaidKey": "IHZK|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -1190,7 +1190,7 @@
      "raw": "SUSAP KATLK7FI09R  I      010GGUYYK7PC0E  I    IF IFUNK7      27500152        PI  J 050000270018000                 0 DS   264482104",
      "fixKey": "GGUYY|K7|PC",
      "recommendedNavaidKey": "IFUN|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 11,
@@ -1212,7 +1212,7 @@
      "raw": "SUSAP KATLK7FI09R  I      011EEASYK7PC0E       CF IFUNK7      2750011809500035PI  + 04000                           0 DS   264492104",
      "fixKey": "EEASY|K7|PC",
      "recommendedNavaidKey": "IFUN|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -1458,7 +1458,7 @@
      "raw": "SUSAP KATLK7FI10   I      010CTEEEK7PC0E  I    IF IOMOK7      27500118        PI  J 040000270018000                 0 NS   264601310",
      "fixKey": "CTEEE|K7|PC",
      "recommendedNavaidKey": "IOMO|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -1727,7 +1727,7 @@
      "raw": "SUSAP KATLK7FI26L  I      010MARKDK7PC0E  I    IF IBRUK7      09500120        PI  J 040000260018000                 0 NS   264721410",
      "fixKey": "MARKD|K7|PC",
      "recommendedNavaidKey": "IBRU|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -1988,7 +1988,7 @@
      "raw": "SUSAP KATLK7FI26R  I      010BAMBUK7PC0E  I    IF IGXZK7      09500118        PI  J 040000270018000                 0 NS   264841310",
      "fixKey": "BAMBU|K7|PC",
      "recommendedNavaidKey": "IGXZ|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -2267,7 +2267,7 @@
      "raw": "SUSAP KATLK7FI27L  I      010GRMPIK7PC0E  I    IF IFSQK7      09500119        PI  J 040000280018000                 0 NS   264971511",
      "fixKey": "GRMPI|K7|PC",
      "recommendedNavaidKey": "IFSQ|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -2529,7 +2529,7 @@
      "raw": "SUSAP KATLK7FI27R  I      010MAASNK7PC0E  I    IF IAFAK7      09500161        PI  J 050000270018000                 0 DS   265092304",
      "fixKey": "MAASN|K7|PC",
      "recommendedNavaidKey": "IAFA|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 11,
@@ -2551,7 +2551,7 @@
      "raw": "SUSAP KATLK7FI27R  I      011MRCERK7PC0E       CF IAFAK7      0950012427500038PI  + 04000                           0 DS   265102304",
      "fixKey": "MRCER|K7|PC",
      "recommendedNavaidKey": "IAFA|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,
@@ -2812,7 +2812,7 @@
      "raw": "SUSAP KATLK7FI28   I      010WONZRK7PC0E  I    IF IPKUK7      09500119        PI  J 040000270018000                 0 NS   265221310",
      "fixKey": "WONZR|K7|PC",
      "recommendedNavaidKey": "IPKU|K7|PI",
-     "segment": "final"
+     "segment": "intermediate"
     },
     {
      "seq": 20,

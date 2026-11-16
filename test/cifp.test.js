@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
-  EARTH_RADIUS_NM, makeProjection, parseAirport, parseAltitude, parseHeader, parseLat, parseLeg, parseLocalizer,
+  EARTH_RADIUS_NM, buildAirport, makeProjection, readCifp, parseAirport, parseAltitude, parseHeader, parseLat, parseLeg, parseLocalizer,
   parseLon, parseMagVar, parseNavaid, parseRunway, parseWaypoint, transitionRunways,
 } from '../scripts/cifp.js';
 
@@ -307,9 +308,10 @@ test('data: each FAF sits on the final approach course at the altitude a 3 degre
     assert.ok(d > 4 && d < 7, `${a.ident} FAF distance ${d}`);
     assert.ok(angleDiff(bearing(faf, r), r.trueBearingDeg) < 0.5, `${a.ident} course`);
     const onPath = r.thresholdElevationFt + r.tchFt + d * NM_FT * Math.tan(rad(3));
-    assert.ok(Math.abs(onPath - a.faf.altitude1Ft) < 100, `${a.ident} FAF altitude ${a.faf.altitude1Ft} vs ${onPath}`);
+    assert.ok(Math.abs(onPath - a.faf.altitude1Ft) < 6, `${a.ident} FAF altitude ${a.faf.altitude1Ft} vs ${onPath}`);
     assert.ok(a.legs.some((g) => g.fixRole === 'MAP' && g.fixIdent === `RW${a.runway}`));
     assert.ok(a.legs.some((g) => g.segment === 'missed'));
+    assert.ok(a.legs.some((g) => g.segment === 'intermediate'));
   }
 });
 
@@ -357,4 +359,11 @@ test('data: STAR speed limits and altitudes are plausible', () => {
       }
     }
   }
+});
+
+test('data: regenerating from the raw CIFP gives exactly the committed JSON (runs when the raw file is present)', (t) => {
+  const raw = process.env.CIFP_PATH ?? fileURLToPath(new URL('../data/raw/FAACIFP18', import.meta.url));
+  if (!existsSync(raw)) return t.skip('no raw CIFP at ' + raw);
+  const fresh = JSON.stringify(buildAirport(readCifp(raw), 'KATL'), null, 1) + '\n';
+  assert.equal(fresh, readFileSync(new URL('../data/katl-2611.json', import.meta.url), 'utf8'));
 });

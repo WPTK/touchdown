@@ -60,7 +60,7 @@ bytes.
   threshold, threshold crossing height, localizer ident.
 - **ILS approaches** (10, `I08L` to `I28`): localizer (frequency, position, bearing, width), glide slope (angle,
   position, threshold crossing height, elevation), the approach transitions, the final and missed approach legs
-  (every leg tagged `final` or `missed`), and the FAF.
+  (every leg tagged `intermediate` before the FAF, `final` from the FAF to the missed approach point, or `missed`), and the FAF.
 - **STARs** (8): every enroute transition, common route and runway transition, with every leg's path terminator, fix,
   turn direction, altitude description and altitudes, speed limit, course, distance and recommended navaid.
   Runway transition `RW08B` is expanded to `08L` and `08R` in `runways`.
@@ -68,7 +68,7 @@ bytes.
   waypoints (PC), enroute waypoints (EA) and VHF navaids and NDBs (D, DB), with latitude and longitude. Nothing is
   unresolved (`unresolvedFixes` is empty and a test checks it).
 - **Projection**: `xNm` east and `yNm` north of the airport reference point, on a spherical azimuthal equidistant
-  projection (Earth radius 3440.065 NM). Distance and bearing from the airport are exact on the sphere; the sphere
+  projection (Earth radius 3440.0695 NM). Distance and bearing from the airport are exact on the sphere; the sphere
   differs from the WGS 84 ellipsoid by up to about 0.3 percent, about 0.1 NM at 40 NM. Elevation is not projected.
 
 Every leg keeps its full 132-character source record in `raw`, so any column that is not decoded is still there.
@@ -79,11 +79,16 @@ Every leg keeps its full 132-character source record in `raw`, so any column tha
   approaches (`approachesNotExtracted` lists their idents), and continuation records (the KATL STARs and ILS
   approaches have none).
 - **Altitude description**: only the blank (at), `+`, `-` and `B` codes are interpreted. The glide slope codes (`H` on
-  every ILS FAF, `J` on the intercept legs) keep the raw code and both altitudes.
+  every ILS FAF, `J` on the first IF leg of each final) keep the raw code and both altitudes.
 - **Waypoint description code**: only the final-approach-fix (`F`), initial-approach-fix (`A`) and missed-approach-point
   (`M`) markers are interpreted; the full four-character code is kept as `descriptionCode`.
 - **RNP** (`rnpRaw`), localizer and glide slope position fields and the category flags are kept as raw strings.
-- Theta, rho, course and distance on RF legs are not interpreted.
+- Theta, rho, course and distance are decoded for every leg by the generic layout, but their meaning on RF legs
+  was not checked against the spec; only the arc radius, turn direction, RNP and centre fix are relied on there.
+- Speed limit is the 3-digit value only; the speed limit description (column 118, for example `-` for at or below)
+  is kept in `raw`.
+- `npm test` regenerates the JSON from the raw CIFP and compares it byte for byte when `data/raw/FAACIFP18` (or
+  `CIFP_PATH`) exists; CI has no raw file and runs the unit and data checks only.
 
 ## Facts in the data worth knowing
 
@@ -91,4 +96,4 @@ Every leg keeps its full 132-character source record in `raw`, so any column tha
   degrees true. The designators 08/26 are therefore 15 degrees off the magnetic bearing, while 09/27 and 10/28 are
   within 5 degrees. This is in the FAA data, not a parsing error; a test records it.
 - Each FAF altitude equals the height of a 3 degree glidepath at the FAF's distance from the threshold, to within
-  4 ft, which is an independent check on the FAF position, threshold elevation, glidepath and projection.
+  6 ft (the test enforces this), which is an independent check on the FAF position, threshold elevation, glidepath and projection.

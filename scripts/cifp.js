@@ -161,7 +161,7 @@ export function parseLocalizer(l) {
 export function parseWaypoint(l) {
   return {
     ident: txt(l, 14, 18),
-    region: col(l, 20, 21),
+    region: txt(l, 20, 21),
     lat: parseLat(col(l, 33, 41)),
     lon: parseLon(col(l, 42, 51)),
     magneticVariationDeg: parseMagVar(col(l, 75, 79)),
@@ -183,7 +183,7 @@ export function parseNavaid(l) {
   }
   return {
     ident: txt(l, 14, 17),
-    region: col(l, 20, 21),
+    region: txt(l, 20, 21),
     kind: ndb ? 'ndb' : 'vor',
     lat,
     lon,
@@ -251,7 +251,7 @@ export function transitionRunways(ident) {
   return m[2] === 'B' ? [`${m[1]}L`, `${m[1]}R`] : [m[1] + m[2]];
 }
 
-// ARINC 5.7 route type for STARs.
+// ARINC 5.7 route type for STARs (types 7-9, profile descents, are not used at KATL and map to 'unknown').
 const STAR_ROUTE = {
   1: { kind: 'enrouteTransition', rnav: false },
   2: { kind: 'common', rnav: false },
@@ -285,6 +285,7 @@ export function buildAirport(allLines, airportIdent) {
     index.get(key).push(o);
   };
   for (const l of allLines) {
+    if (!'01'.includes(col(l, 22))) continue; // skip continuation records (column 22)
     if (l.startsWith('SUSAEA')) {
       const w = parseWaypoint(l);
       add(`${w.ident}|${w.region}|EA`, { type: 'enrouteWaypoint', ...w });
@@ -358,7 +359,7 @@ export function buildAirport(allLines, airportIdent) {
   for (const l of sub('F').filter((x) => '01'.includes(txt(x, 39)) && txt(x, 14).startsWith('I'))) {
     const ident = txt(l, 14, 19);
     let ap = ils.find((a) => a.ident === ident);
-    if (!ap) ils.push((ap = { ident, runway: ident.slice(1), transitions: [], legs: [] }));
+    if (!ap) ils.push((ap = { ident, runway: /^I(\d{2}[LRC]?)/.exec(ident)[1], transitions: [], legs: [] }));
     const leg = link(parseLeg(l), ident);
     if (txt(l, 20) === 'A') {
       const name = txt(l, 21, 25);
@@ -373,10 +374,12 @@ export function buildAirport(allLines, airportIdent) {
     const loc = localizers.find((q) => q.runway === ap.runway);
     ap.localizer = loc ? place(loc) : null;
     const mapAt = ap.legs.findIndex((g) => g.fixRole === 'MAP');
+    const fafAt = ap.legs.findIndex((g) => g.fixRole === 'FAF');
+    // intermediate: legs before the FAF; final: FAF to the MAP; missed: after the MAP.
     ap.legs.forEach((g, i) => {
-      g.segment = mapAt >= 0 && i > mapAt ? 'missed' : 'final';
+      g.segment = mapAt >= 0 && i > mapAt ? 'missed' : i < fafAt ? 'intermediate' : 'final';
     });
-    const faf = ap.legs.find((g) => g.fixRole === 'FAF');
+    const faf = ap.legs[fafAt];
     ap.faf = faf
       ? prune({
           fixIdent: faf.fixIdent,
