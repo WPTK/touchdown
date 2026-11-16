@@ -2,6 +2,8 @@
 
 ### Superintelligent Enroute Arrival Navigator
 
+*Powered by D.U.F.F.Y. (Dynamically Unseparated Flight Flow, Yolo)*
+
 > *Parody. Not affiliated with the FAA or DOT, and it doesn't control real aircraft (please don't let it).*
 
 Air traffic control in America apparently still runs on a
