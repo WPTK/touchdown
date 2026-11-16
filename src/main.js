@@ -1,5 +1,8 @@
 import { createSim, setDemand, step } from './sim.js';
-import { drawScope } from './scope.js';
+import { drawScope, drawRegion } from './scope.js';
+import { createEnroute, stepEnroute, handoffLine } from './enroute.js';
+import { defaultView, regionView, tracon, hubOf, zoomAt, panBy, screenOf } from './view.js';
+import { lossShape, lossProgress, lossBlips } from './loss.js';
 import { createWeather, components, FLOWS } from './weather.js';
 import { SCENARIOS, byId } from './scenarios.js';
 import { sharknadoMetar } from './wx-sean.js';
@@ -27,6 +30,13 @@ let ctl;
 let monitor;
 let trails;
 let trophies;
+let clt; // Charlotte's TRACON, its own sim with its own S.E.A.N. and monitor
+let cltCtl;
+let cltMonitor;
+let cltTrails;
+let en; // the enroute traffic across the five centres
+let view = defaultView(); // opens on A80, as ever
+let lossStart = null; // when the Loss animation began, in frame time
 const listener = createListener(browserDeps()); // off until the Listen box is ticked
 const store = createStore(); // the trophy case, kept across visits when the browser allows it
 let paused = false;
@@ -47,6 +57,9 @@ if (wxParam && byId(wxParam)) $('scenario').value = wxParam;
 const seedParam = new URLSearchParams(location.search).get('seed');
 if (seedParam) $('seed').value = seedParam;
 
+// Charlotte lands fewer an hour than Atlanta (docs/data.md), so it gets a share of the slider.
+const cltDemand = () => Math.round(Number($('demand').value) * 0.6);
+
 function reset() {
   const seed = Number($('seed').value) || 1;
   const scenario = byId($('scenario').value);
@@ -58,9 +71,19 @@ function reset() {
     weather: scenario ? createWeather({ scenario, seed }) : null,
   });
   monitor = createMonitor();
+  cltCtl = createSean(seed + 1);
+  clt = createSim({ seed: seed + 1, airport: 'KCLT', demandPerHour: cltDemand(), controller: cltCtl });
+  cltMonitor = createMonitor();
+  cltTrails = new Map();
+  en = createEnroute({ seed, perHour: 60, controller: 'sean' });
+  lossStart = null;
   // ?t=5400 starts the run 90 minutes in, so a link can open on the storm.
   const skip = Number(new URLSearchParams(location.search).get('t')) || 0;
-  while (sim.t < skip) step(sim, 1);
+  while (sim.t < skip) {
+    step(sim, 1);
+    step(clt, 1);
+    stepEnroute(en, 1);
+  }
   trails = new Map();
   trophies = createTrophies();
   carry = 0;
@@ -68,7 +91,7 @@ function reset() {
   if (listener.on) listener.enable(ctl.sean.feed, paused); // a new run, so read from its start
 }
 
-function sampleTrails() {
+function sampleTrails(sim, trails) {
   const live = new Set();
   for (const a of [...sim.aircraft, ...sim.anomalies.filter((u) => !u.gone)]) {
     live.add(a.id);
@@ -233,6 +256,8 @@ function updatePanel() {
   }
   const points = truth.violations;
   const kept = ACHIEVEMENTS.filter((x) => store.has(x.id) || trophies.unlocked.has(x.id)).length;
+  $('regional').textContent = `${en.aircraft.length} enroute, ${en.handoffs.length} handoffs, ${en.losses.length} enroute losses (S.E.A.N. is running the centre)`;
+  $('handoff').textContent = en.handoffs.length ? handoffLine(en.handoffs[en.handoffs.length - 1]) : 'No handoffs yet.';
   $('score').textContent = `${points} ${points === 1 ? 'point' : 'points'} (one per logged violation), ${kept} of ${ACHIEVEMENTS.length} trophies${store.persistent ? ', kept on this browser' : ''}`;
   $('trophies').replaceChildren(
     ...ACHIEVEMENTS.map((a) => {
@@ -288,6 +313,27 @@ function updatePanel() {
   );
 }
 
+// The Loss meme: dim the scope, draw the rules, and slide every blip into its place as a | or a _ (src/loss.js).
+function drawLoss(width, height, blips, k) {
+  const shape = lossShape(width, height);
+  ctx.fillStyle = `rgba(5, 11, 8, ${0.88 * k})`;
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = `rgba(216, 230, 220, ${k})`;
+  ctx.lineWidth = 3;
+  for (const [a, b] of shape.lines) {
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+  ctx.font = `bold ${shape.fontPx}px ui-monospace, "Cascadia Mono", Consolas, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#d8e6dc';
+  for (const b of lossBlips(blips, shape, k)) ctx.fillText(b.ch, b.x, b.y);
+  ctx.textAlign = 'left';
+}
+
 function frame(now) {
   const elapsed = Math.min((now - lastFrame) / 1000, 0.25);
   lastFrame = now;
@@ -297,16 +343,34 @@ function frame(now) {
     while (carry >= 1 && n < MAX_STEPS_PER_FRAME) {
       step(sim, 1);
       observe(monitor, sim);
-      if (sim.t % TRAIL_EVERY_S === 0) sampleTrails();
+      step(clt, 1);
+      observe(cltMonitor, clt);
+      stepEnroute(en, 1);
+      if (sim.t % TRAIL_EVERY_S === 0) {
+        sampleTrails(sim, trails);
+        sampleTrails(clt, cltTrails);
+      }
       carry -= 1;
       n++;
     }
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
   }
-  for (const a of runAchievements({ trophies, ctx: { sim, monitor, sean: ctl.sean }, ctl, store }).firsts) toast(a.title, a.pride);
+  for (const a of runAchievements({ trophies, ctx: { sim, monitor, sean: ctl.sean }, ctl, store }).firsts) {
+    toast(a.title, a.pride);
+    if (a.id === 'first-loss') lossStart = now; // the one bit: everything on the scope forms the Loss meme
+  }
   listener.update(ctl.sean.feed);
   const { width, height } = canvas.getBoundingClientRect();
-  drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null });
+  const hub = hubOf(view);
+  let blips;
+  if (hub === 'KATL') blips = drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null, rangeNm: view.rangeNm });
+  else if (hub === 'KCLT') blips = drawScope(ctx, clt, cltTrails, { width, height, rangeNm: view.rangeNm });
+  else blips = drawRegion(ctx, { atl: sim, clt, en }, view, { width, height });
+  if (lossStart !== null) {
+    const k = lossProgress(Math.max(0, now - lossStart));
+    if (k === null) lossStart = null;
+    else drawLoss(width, height, blips, k);
+  }
   if (now - lastPanel > 250) {
     updatePanel();
     lastPanel = now;
@@ -322,11 +386,14 @@ $('pause').addEventListener('click', () => {
 $('demand').addEventListener('input', () => {
   $('demandOut').textContent = $('demand').value;
   setDemand(sim, Number($('demand').value));
+  setDemand(clt, cltDemand());
 });
 $('reset').addEventListener('click', reset);
 $('shutdown').addEventListener('change', () => ctl.setShutdown(sim, $('shutdown').checked));
 $('relieve').addEventListener('click', () => {
   ctl.relieve(sim);
+  cltCtl.relieve(clt);
+  en.controller = 'safe'; // relieved everywhere, enroute included
   updatePanel();
 });
 for (const box of document.querySelectorAll('[data-filter]')) {
@@ -343,8 +410,44 @@ $('listen').addEventListener('change', () => {
   else if (!$('listen').checked) listener.disable();
 });
 $('scenario').addEventListener('change', reset);
+
+// The view: buttons, the wheel to zoom about the cursor, and a drag to pan. Zoomed into a hub it becomes that TRACON.
+const setView = (v) => {
+  view = v;
+  for (const [id, f] of [['viewRegion', () => !hubOf(view) && view.rangeNm > 100], ['viewAtl', () => hubOf(view) === 'KATL'], ['viewClt', () => hubOf(view) === 'KCLT']]) $(id).setAttribute('aria-pressed', String(f()));
+};
+$('viewRegion').addEventListener('click', () => setView(regionView()));
+$('viewAtl').addEventListener('click', () => setView(tracon('KATL')));
+$('viewClt').addEventListener('click', () => setView(tracon('KCLT')));
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const sc = screenOf(view, r.width, r.height);
+  setView(zoomAt(view, Math.exp(e.deltaY * 0.0015), sc.nmX(e.clientX - r.left), sc.nmY(e.clientY - r.top)));
+}, { passive: false });
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  drag = { x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const r = canvas.getBoundingClientRect();
+  const sc = screenOf(view, r.width, r.height);
+  setView(panBy(view, -(e.clientX - drag.x) / sc.scale, (e.clientY - drag.y) / sc.scale));
+  drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', () => (drag = null));
+canvas.addEventListener('pointercancel', () => (drag = null));
+// ?view=region or ?view=clt opens on another view, and ?loss plays the meme on load.
+const viewParam = new URLSearchParams(location.search).get('view');
+if (viewParam === 'region') view = regionView();
+if (viewParam === 'clt') view = tracon('KCLT');
+setView(view);
+
 window.addEventListener('resize', resize);
 
 reset();
 resize();
+if (new URLSearchParams(location.search).has('loss')) lossStart = performance.now();
 requestAnimationFrame(frame);

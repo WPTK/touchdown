@@ -300,3 +300,15 @@ minimum. That is exact, because nothing turns or climbs. S.E.A.N. picks any leve
 (`observeEnroute`) counts a loss when both lateral and vertical limits are broken at once. The oracle: zero losses over
 6 hours at 40, 80 and 120 an hour, 3 seeds each. S.E.A.N. at 120 an hour is caught by the same monitor.
 Cost: 56 microseconds per simulated second at 60 an hour (87 airborne), 171 at 120 an hour (197 airborne).
+
+## The regional scope (`src/view.js`, `src/frame.js`, `src/loss.js`)
+
+The scope looks at a centre point in the regional frame and a range. Over 60 NM, or away from a hub, it draws the region:
+the five boundaries, every hub in them (large hubs as squares, the rest as dots, names as you zoom), the 30 NM TRACON circle
+around Atlanta and Charlotte, both sims' arrivals, and the enroute traffic with a 6 minute vector. At or under 60 NM and
+within 30 NM of a hub it draws that hub's own TRACON scope. A hub sim runs in its own frame; `localToRegion` goes through
+latitude and longitude, so Charlotte's aircraft are placed with the same projection the boundaries use. The page opens on
+Atlanta at 50 NM. `?view=region`, `?view=clt` and `?loss` (plays the meme) are in the address bar for links and screenshots.
+
+Charlotte's demand is 60% of the slider. Weather, the shutdown and the frequency are still Atlanta's. Charlotte has its own
+S.E.A.N. and monitor, and enroute S.E.A.N. runs the sky until Relieve S.E.A.N. is pressed.

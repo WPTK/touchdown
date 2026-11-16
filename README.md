@@ -56,6 +56,13 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
 - Floppy disk updates. S.E.A.N. installs its upgrades from a floppy, three disks and a progress bar. FOX 29
   [reports](https://fox29.com/news/faa-finally-phase-out-floppy-disks-from-air-traffic-control-systems-2028) the FAA
   is still buying replacement parts on eBay, and plans to retire the floppies by 2028
+- The whole Southeast. S.E.A.N. now runs Atlanta Center (ZTL), drawn with the FAA's real boundary, and the edges it
+  hands off to (Jacksonville, Memphis, Washington and Indianapolis). Atlanta and Charlotte each land their own
+  arrivals on real approaches, and enroute traffic crosses the center at FL290 to FL410 with 5 NM and 1,000 ft
+  separation (2,000 ft for the odd non-RVSM aircraft). Every time one crosses a boundary S.E.A.N. hands it off to
+  S.E.A.N. The scope opens on Atlanta. Region, ATL and CLT buttons jump around, the wheel zooms and a drag pans, and
+  zooming into a hub turns it into that airport's TRACON. Weather is still Atlanta only
+- The first separation loss. Everything on the scope forms the meme, in ASCII
 - A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"
