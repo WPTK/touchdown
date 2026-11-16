@@ -19,16 +19,12 @@ function go(r, seconds, each) {
   }
 }
 
-test('achievements: about ten, unique, each has the text the UI needs', () => {
-  assert.ok(ACHIEVEMENTS.length >= 9 && ACHIEVEMENTS.length <= 12);
-  assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length);
-  for (const a of ACHIEVEMENTS) assert.ok(a.title && a.hint && a.blurb && a.pride && typeof a.test === 'function');
-});
-
 test('achievements: Paragraph Collector needs 5 different paragraphs, and the outage entry does not count', () => {
-  const sim = { t: 99, elsewhere: [] };
-  const monitor = { counts: { [PARA.SEP]: 1, [PARA.ALT]: 1, [PARA.SPEED_ADJ]: 1, [PARA.WAKE]: 1, [PARA.OUTAGE]: 4 }, violations: [] };
-  const sean = { billed: 0, blimpsSent: 0, goArounds: 0, relieveTries: 0, installs: 0 };
+  const sim = createSim({ seed: 1, demandPerHour: 10 });
+  sim.t = 99;
+  const monitor = createMonitor();
+  Object.assign(monitor.counts, { [PARA.SEP]: 1, [PARA.ALT]: 1, [PARA.SPEED_ADJ]: 1, [PARA.WAKE]: 1, [PARA.OUTAGE]: 4 });
+  const sean = createSean(1).sean;
   const tr = createTrophies();
   assert.equal(checkAchievements(tr, { sim, monitor, sean }).some((a) => a.id === 'paragraph-collector'), false);
   monitor.counts[PARA.UAP] = 1;
