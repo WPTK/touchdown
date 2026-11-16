@@ -22,6 +22,10 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
 - Holding patterns that grow, merge and drift (a couple have made it to Alabama)
 - GO-AROUND-as-a-Service (GaaS), unlimited go-arounds at no extra charge
 - NOTAM: Nobody Owns This, AI Managed
+- Blimps. A 35 kt airship wanders in and gets sequenced like a jet. Everything behind it catches up, which S.E.A.N.
+  counts as a capacity win
+- UFOs. An unidentified target with no data block gets a squawk, a runway and a slot. JO 7110.65 9-8-1 says to inform
+  the operations supervisor, and the supervisor is S.E.A.N., so it informs itself
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"
   ([CNN](https://krdo.com/news/2026/05/15/faa-slashes-hiring-target-saying-it-can-keep-the-skies-safe-with-fewer-air-traffic-controllers-than-it-thought/)),
