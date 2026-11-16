@@ -2,6 +2,8 @@
 import { FAF, RUNWAY, holdOutline } from './sim.js';
 
 const COLORS = { transit: '#7dfc9c', hold: '#ffb347', inner: '#6ce0ff' };
+const BLIMP = '#ffe14a';
+const UFO = '#ff5cf0';
 const RANGE_NM = 44;
 
 export function drawScope(ctx, sim, trails, { width, height }) {
@@ -72,7 +74,8 @@ export function drawScope(ctx, sim, trails, { width, height }) {
 
   // Traffic: history dots, target, leader line, data block.
   for (const a of sim.aircraft) {
-    const color = COLORS[a.phase];
+    const blimp = a.kind === 'blimp';
+    const color = blimp ? BLIMP : COLORS[a.phase];
     const hist = trails.get(a.id) || [];
     hist.forEach((p, i) => {
       ctx.fillStyle = color;
@@ -83,7 +86,13 @@ export function drawScope(ctx, sim, trails, { width, height }) {
     const x = px(a.x);
     const y = py(a.y);
     ctx.strokeStyle = color;
-    ctx.strokeRect(x - 3, y - 3, 6, 6);
+    if (blimp) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, 8, 3.5, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(x - 3, y - 3, 6, 6);
+    }
     ctx.beginPath();
     ctx.moveTo(x + 4, y - 4);
     ctx.lineTo(x + 14, y - 14);
@@ -93,5 +102,30 @@ export function drawScope(ctx, sim, trails, { width, height }) {
     const vs = a.vsFpm < -100 ? '↓' : a.vsFpm > 100 ? '↑' : ' ';
     ctx.fillText(a.callsign, x + 16, y - 20);
     ctx.fillText(`${fl}${vs}${String(Math.round(a.speedKt / 10)).padStart(2, '0')} ${a.type} ${a.wake}`, x + 16, y - 8);
+  }
+
+  // Unidentified targets: no leader line, no data block, and a pulse nothing else on the scope has.
+  for (const u of sim.anomalies) {
+    if (u.gone) continue;
+    const hist = trails.get(u.id) || [];
+    hist.forEach((p, i) => {
+      ctx.fillStyle = UFO;
+      ctx.globalAlpha = 0.1 + (0.35 * i) / hist.length;
+      ctx.fillRect(px(p.x) - 1, py(p.y) - 1, 2, 2);
+    });
+    ctx.globalAlpha = 1;
+    const x = px(u.x);
+    const y = py(u.y);
+    const pulse = 7 + 3 * Math.sin(sim.t * 1.5);
+    ctx.strokeStyle = UFO;
+    ctx.beginPath();
+    ctx.moveTo(x, y - pulse);
+    ctx.lineTo(x + pulse, y);
+    ctx.lineTo(x, y + pulse);
+    ctx.lineTo(x - pulse, y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = UFO;
+    ctx.fillText('?', x - 3, y + 1);
   }
 }

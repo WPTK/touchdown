@@ -1,5 +1,7 @@
 import { createSim, setDemand, step } from './sim.js';
 import { drawScope } from './scope.js';
+import { createSean } from './sean.js';
+import { createMonitor, observe, PARA } from './monitor.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -10,6 +12,8 @@ const TRAIL_LEN = 6;
 const MAX_STEPS_PER_FRAME = 600;
 
 let sim;
+let ctl;
+let monitor;
 let trails;
 let paused = false;
 let carry = 0;
@@ -17,14 +21,17 @@ let lastFrame = performance.now();
 let lastPanel = 0;
 
 function reset() {
-  sim = createSim({ seed: Number($('seed').value) || 1, demandPerHour: Number($('demand').value) });
+  const seed = Number($('seed').value) || 1;
+  ctl = createSean(seed);
+  sim = createSim({ seed, demandPerHour: Number($('demand').value), controller: ctl });
+  monitor = createMonitor();
   trails = new Map();
   carry = 0;
 }
 
 function sampleTrails() {
   const live = new Set();
-  for (const a of sim.aircraft) {
+  for (const a of [...sim.aircraft, ...sim.anomalies.filter((u) => !u.gone)]) {
     live.add(a.id);
     const t = trails.get(a.id) || [];
     t.push({ x: a.x, y: a.y });
@@ -48,7 +55,7 @@ function hms(t) {
 }
 
 function updatePanel() {
-  const losses = sim.losses.length;
+  const losses = monitor.counts[PARA.SEP] || 0;
   $('losses').textContent = losses;
   $('losses').classList.toggle('bad', losses > 0);
   $('landed').textContent = sim.landed.length;
@@ -66,6 +73,44 @@ function updatePanel() {
   }
   const c = sim.closest;
   $('closest').textContent = Number.isFinite(c.margin) ? `${c.dh.toFixed(1)} NM / ${Math.round(c.dv)} ft` : '–';
+
+  const row = (tag, cls, time, ...parts) => {
+    const li = document.createElement(tag);
+    if (cls) li.className = cls;
+    const tm = document.createElement('time');
+    tm.textContent = time >= 3600 ? hms(time) : hms(time).slice(3);
+    li.append(tm, ...parts);
+    return li;
+  };
+  $('feed').replaceChildren(...ctl.sean.feed.slice(-12).reverse().map((f) => row('li', f.kind, f.t, f.text)));
+  $('counts').replaceChildren(
+    ...Object.entries(monitor.counts)
+      .sort((x, y) => y[1] - x[1])
+      .map(([para, n]) => {
+        const li = document.createElement('li');
+        const p = document.createElement('span');
+        p.className = 'para';
+        p.textContent = para;
+        const c = document.createElement('span');
+        c.textContent = n;
+        li.append(p, c);
+        return li;
+      }),
+  );
+  $('log').replaceChildren(
+    ...monitor.violations
+      .slice(-40)
+      .reverse()
+      .map((v) => {
+        const p = document.createElement('span');
+        p.className = 'para';
+        p.textContent = v.para;
+        const why = document.createElement('span');
+        why.className = 'why';
+        why.textContent = `${v.title}. ${v.detail}`;
+        return row('li', '', v.t, p, why);
+      }),
+  );
 
   $('sequence').replaceChildren(
     ...sim.queue.map((a, i) => {
@@ -97,6 +142,7 @@ function frame(now) {
     let n = 0;
     while (carry >= 1 && n < MAX_STEPS_PER_FRAME) {
       step(sim, 1);
+      observe(monitor, sim);
       if (sim.t % TRAIL_EVERY_S === 0) sampleTrails();
       carry -= 1;
       n++;

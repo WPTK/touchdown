@@ -88,7 +88,7 @@ export function checkDesign(cfg = CONFIG) {
   };
 }
 
-export function createSim({ seed = 1, demandPerHour = 24, config = {} } = {}) {
+export function createSim({ seed = 1, demandPerHour = 24, config = {}, controller = null } = {}) {
   const cfg = { ...CONFIG, ...config };
   const design = checkDesign(cfg);
   if (!design.ok) throw new Error(`unsafe config: ${JSON.stringify(design.checks)}`);
@@ -98,6 +98,9 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {} } = {}) {
     geo,
     design,
     seed,
+    controller, // optional: beforeStep, afterStep, onSpawn, onDepart (see sean.js)
+    orders: [], // speed assignments a controller has issued, for the conformance monitor
+    anomalies: [], // unidentified targets, not part of the arrival stream
     rng: mulberry32(seed),
     t: 0,
     nextId: 1,
@@ -140,9 +143,13 @@ function callsign(sim) {
   }
 }
 
-function outerAlt(sim, a, t) {
-  return Math.max(a.targetAlt, a.fromAlt - (sim.cfg.stepRateFpm / 60) * (t - a.stepStartT));
+export function outerAlt(sim, a, t) {
+  const d = (sim.cfg.stepRateFpm / 60) * (t - a.stepStartT);
+  return a.fromAlt >= a.targetAlt ? Math.max(a.targetAlt, a.fromAlt - d) : Math.min(a.targetAlt, a.fromAlt + d);
 }
+
+// Per-aircraft speeds default to the config; a controller can override them on the aircraft.
+const innerKt = (sim, a) => a.innerKt ?? sim.cfg.innerSpeedKt;
 
 function spawn(sim, req, t) {
   const { cfg, rng } = sim;
@@ -181,6 +188,7 @@ function spawn(sim, req, t) {
   };
   sim.queue.push(a);
   sim.aircraft.push(a);
+  sim.controller?.onSpawn?.(sim, a, req);
 }
 
 // Consecutive pairs only, as in the table. Time `a` must trail the last departure: the larger of the radar minimum and the wake minimum (TBL 5-5-4).
@@ -208,10 +216,11 @@ function depart(sim, a, t) {
   a.phase = 'inner';
   a.s = 0;
   a.departT = t;
-  a.speedKt = sim.cfg.innerSpeedKt;
+  a.speedKt = innerKt(sim, a);
   sim.lastDepartT = t;
   sim.lastDepartWake = a.wake;
   sim.departures.push(t);
+  sim.controller?.onDepart?.(sim, a, t);
   const next = sim.queue[0];
   if (next && next.phase === 'hold') planHold(sim, next, t);
 }
@@ -235,11 +244,11 @@ function planHold(sim, a, now) {
   const phase = holdPhase(a, now);
   a.holdAnchorT = now;
   a.holdAnchorPhase = phase;
-  a.holdRate = (cfg.innerSpeedKt * KT) / lap;
+  a.holdRate = (innerKt(sim, a) * KT) / lap;
   if (sim.queue[0] !== a) return;
   const ready = readyTime(sim, a);
-  const minR = (cfg.holdMinKt * KT) / lap;
-  const maxR = (cfg.holdMaxKt * KT) / lap;
+  const minR = ((a.holdMinKt ?? cfg.holdMinKt) * KT) / lap;
+  const maxR = ((a.holdMaxKt ?? cfg.holdMaxKt) * KT) / lap;
   for (let k = a.nextCross; ; k++) {
     const tMin = now + (k - phase) / maxR;
     const tMax = now + (k - phase) / minR;
@@ -275,7 +284,7 @@ function advanceHold(sim, a, t1) {
     if (tc > t1 + EPS) break;
     if (canDepart(sim, a, tc)) {
       depart(sim, a, tc);
-      a.s = sim.cfg.innerSpeedKt * KT * (t1 - tc);
+      a.s = innerKt(sim, a) * KT * (t1 - tc);
       return;
     }
     a.nextCross++;
@@ -315,6 +324,7 @@ export function step(sim, dt = 1) {
   const { cfg } = sim;
   const t0 = sim.t;
   const t1 = t0 + dt;
+  sim.controller?.beforeStep?.(sim, dt);
 
   while (sim.nextRequestT <= t1) {
     sim.upstream.push({ requestT: sim.nextRequestT, callsign: callsign(sim) });
@@ -329,17 +339,17 @@ export function step(sim, dt = 1) {
   }
 
   // Queue order first, so a new head is always moved after the departure that promoted it.
-  const vInner = cfg.innerSpeedKt * KT;
   const order = [...sim.queue, ...sim.aircraft.filter((a) => a.phase === 'inner')];
   for (const a of order) {
     a.fuelS -= dt;
     if (a.phase === 'transit') {
       const f = sim.geo.feeders[a.feeder];
       const dist = Math.hypot(f.x - a.x, f.y - a.y);
-      let kt = cfg.transitSpeedKt;
+      const cruise = a.transitKt ?? cfg.transitSpeedKt;
+      let kt = cruise;
       if (sim.queue[0] === a) {
         const slack = readyTime(sim, a) - t0;
-        if (slack > 0) kt = Math.min(cfg.transitSpeedKt, Math.max(cfg.transitMinKt, dist / KT / slack));
+        if (slack > 0) kt = Math.min(cruise, Math.max(a.transitMinKt ?? cfg.transitMinKt, dist / KT / slack));
       }
       a.speedKt = kt;
       const vT = kt * KT;
@@ -349,7 +359,7 @@ export function step(sim, dt = 1) {
         a.y = f.y;
         if (canDepart(sim, a, ta)) {
           depart(sim, a, ta);
-          a.s = vInner * (t1 - ta);
+          a.s = innerKt(sim, a) * KT * (t1 - ta);
         } else {
           enterHold(sim, a, ta);
           advanceHold(sim, a, t1);
@@ -362,7 +372,7 @@ export function step(sim, dt = 1) {
     } else if (a.phase === 'hold') {
       advanceHold(sim, a, t1);
     } else if (a.departT < t0) {
-      a.s += vInner * dt;
+      a.s += innerKt(sim, a) * KT * dt;
     }
   }
 
@@ -372,7 +382,7 @@ export function step(sim, dt = 1) {
     if (a.phase === 'inner') {
       const total = sim.geo.feeders[a.feeder].l1 + sim.geo.l2;
       if (a.s >= total - EPS) {
-        a.landT = t1 - (a.s - total) / vInner;
+        a.landT = t1 - (a.s - total) / (innerKt(sim, a) * KT);
         a.phase = 'landed';
         landedNow.push(a);
         continue;
@@ -405,6 +415,7 @@ export function step(sim, dt = 1) {
 
   sim.t = t1;
   checkSeparation(sim);
+  sim.controller?.afterStep?.(sim, dt);
 }
 
 export function checkSeparation(sim) {
