@@ -21,7 +21,8 @@ export const BLIMP_KT = 35;
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
-  // The newer features draw from their own stream, so adding one never reshuffles what the older ones do.
+  // The newer features draw from their own stream, so they mostly leave the older ones alone. Text for the old
+  // events (a fuel-out, a diversion) still comes from `rng`, and every pick draws once even from a one-line list.
   const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
   let baseSpacingS = null;
   const sean = {
