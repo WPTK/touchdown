@@ -27,6 +27,7 @@ export const PARA = Object.freeze({
   AARO: 'AIM 7-7-4',
   OUTAGE: 'scope outage', // not a paragraph: what happened while the scope was dark
   RWY: '3-5-1',
+  READBACK: '2-4-3', // the controller ensures the items read back are correct
 });
 
 // 5-7-1: no speed adjustment inside the final approach fix on final or a point 5 miles from the runway,
@@ -84,6 +85,7 @@ export function createMonitor() {
     held: [],
     landedCursor: 0,
     elsewhereCursor: 0,
+    readbackCursor: 0,
   };
 }
 
@@ -303,6 +305,13 @@ export function observe(m, sim) {
       m.filed.add(u.id);
       log(m, t, PARA.AARO, 'UAP report not sent to AARO', [u.id], 'Reports go to https://www.aaro.mil/. S.E.A.N. kept it in-house');
     }
+  }
+
+  // 2-4-3: when a pilot reads a clearance back, ensure the items read back are correct. Each wrong readback the
+  // controller let stand is logged once.
+  for (; m.readbackCursor < sim.readbacks.length; m.readbackCursor++) {
+    const r = sim.readbacks[m.readbackCursor];
+    log(m, t, PARA.READBACK, 'Readback error not corrected', [], `${r.callsign} read back "${r.said}" for "${r.expected}", and the controller said it was correct`);
   }
 
   // Where each one actually came down. Not a 7110.65 matter, so it is a ledger and not a violation.

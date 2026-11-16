@@ -110,7 +110,13 @@
       </section>
 
       <section>
-        <h2>S.E.A.N. says</h2>
+        <h2>On the frequency</h2>
+        <div class="filters" role="group" aria-label="Who is on the frequency">
+          <label><input type="checkbox" data-filter="sean" checked> S.E.A.N.</label>
+          <label><input type="checkbox" data-filter="pilot" checked> Pilots</label>
+          <label><input type="checkbox" data-filter="monitor" checked> Monitor</label>
+        </div>
+        <p class="busy">Frequency <meter id="busy" min="0" max="100" value="0"></meter> <output id="busyText">idle</output></p>
         <ol id="feed" class="feed"></ol>
       </section>
 
