@@ -1,0 +1,128 @@
+import { createSim, setDemand, step } from './sim.js';
+import { drawScope } from './scope.js';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('scope');
+const ctx = canvas.getContext('2d');
+
+const TRAIL_EVERY_S = 6;
+const TRAIL_LEN = 6;
+const MAX_STEPS_PER_FRAME = 600;
+
+let sim;
+let trails;
+let paused = false;
+let carry = 0;
+let lastFrame = performance.now();
+let lastPanel = 0;
+
+function reset() {
+  sim = createSim({ seed: Number($('seed').value) || 1, demandPerHour: Number($('demand').value) });
+  trails = new Map();
+  carry = 0;
+}
+
+function sampleTrails() {
+  const live = new Set();
+  for (const a of sim.aircraft) {
+    live.add(a.id);
+    const t = trails.get(a.id) || [];
+    t.push({ x: a.x, y: a.y });
+    if (t.length > TRAIL_LEN) t.shift();
+    trails.set(a.id, t);
+  }
+  for (const id of trails.keys()) if (!live.has(id)) trails.delete(id);
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const { width, height } = canvas.getBoundingClientRect();
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function hms(t) {
+  const s = Math.floor(t);
+  return [s / 3600, (s % 3600) / 60, s % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':');
+}
+
+function updatePanel() {
+  const losses = sim.losses.length;
+  $('losses').textContent = losses;
+  $('losses').classList.toggle('bad', losses > 0);
+  $('landed').textContent = sim.landed.length;
+  $('clock').textContent = hms(sim.t);
+  $('airborne').textContent = sim.aircraft.length;
+  $('holding').textContent = sim.aircraft.filter((a) => a.phase === 'hold').length;
+  $('upstream').textContent = sim.upstream.length;
+  $('fuel').textContent = sim.fuelOuts.length;
+
+  const recent = sim.landed.filter((l) => l.landT > sim.t - 3600);
+  $('rate').textContent = sim.t >= 3600 ? recent.length : '–';
+  if (sim.landed.length) {
+    const wait = sim.landed.reduce((s, l) => s + (l.spawnT - l.requestT), 0) / sim.landed.length;
+    $('wait').textContent = `${Math.round(wait / 60)} min`;
+  }
+  const c = sim.closest;
+  $('closest').textContent = Number.isFinite(c.margin) ? `${c.dh.toFixed(1)} NM / ${Math.round(c.dv)} ft` : '–';
+
+  $('sequence').replaceChildren(
+    ...sim.queue.map((a, i) => {
+      const li = document.createElement('li');
+      li.className = a.phase;
+      const fix = sim.geo.feeders[a.feeder].name;
+      const cells = [
+        ['n', String(i + 1)],
+        ['', a.callsign],
+        ['', String(Math.round(a.targetAlt / 100)).padStart(3, '0')],
+        ['fix', `${a.phase === 'hold' ? 'HOLD ' : ''}${fix}`],
+      ];
+      for (const [cls, text] of cells) {
+        const span = document.createElement('span');
+        if (cls) span.className = cls;
+        span.textContent = text;
+        li.append(span);
+      }
+      return li;
+    }),
+  );
+}
+
+function frame(now) {
+  const elapsed = Math.min((now - lastFrame) / 1000, 0.25);
+  lastFrame = now;
+  if (!paused) {
+    carry += elapsed * Number($('speed').value);
+    let n = 0;
+    while (carry >= 1 && n < MAX_STEPS_PER_FRAME) {
+      step(sim, 1);
+      if (sim.t % TRAIL_EVERY_S === 0) sampleTrails();
+      carry -= 1;
+      n++;
+    }
+    if (n === MAX_STEPS_PER_FRAME) carry = 0;
+  }
+  const { width, height } = canvas.getBoundingClientRect();
+  drawScope(ctx, sim, trails, { width, height });
+  if (now - lastPanel > 250) {
+    updatePanel();
+    lastPanel = now;
+  }
+  requestAnimationFrame(frame);
+}
+
+$('pause').addEventListener('click', () => {
+  paused = !paused;
+  $('pause').textContent = paused ? 'Run' : 'Pause';
+});
+$('demand').addEventListener('input', () => {
+  $('demandOut').textContent = $('demand').value;
+  setDemand(sim, Number($('demand').value));
+});
+$('reset').addEventListener('click', reset);
+window.addEventListener('resize', resize);
+
+reset();
+resize();
+requestAnimationFrame(frame);
