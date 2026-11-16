@@ -67,8 +67,6 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   const px = (x) => cx + x * scale;
   const py = (y) => cy - y * scale;
 
-  const FAF = sim.geo.faf;
-  const RUNWAY = sim.geo.runway;
   ctx.fillStyle = '#050b08';
   ctx.fillRect(0, 0, width, height);
   if (sim.outages.some((o) => sim.t >= o.startT && sim.t < o.endT)) {
@@ -100,40 +98,42 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
     ctx.fillText(String(r), cx + 3, cy - r * scale + 8);
   }
 
-  // Procedures: feeder legs, final, holds.
+  // Procedures: each hold fix's routes to the runways of the flow, and the holding orbits.
   ctx.setLineDash([4, 6]);
-  ctx.strokeStyle = 'rgba(108, 224, 255, 0.28)';
-  for (const f of sim.geo.feeders) {
-    ctx.beginPath();
-    ctx.moveTo(px(f.x), py(f.y));
-    ctx.lineTo(px(FAF.x), py(FAF.y));
-    ctx.lineTo(px(RUNWAY.x), py(RUNWAY.y));
-    ctx.stroke();
+  ctx.strokeStyle = 'rgba(108, 224, 255, 0.22)';
+  for (const star of Object.values(sim.geo.stars)) {
+    for (const route of Object.values(star.routes)) {
+      ctx.beginPath();
+      route.path.verts.forEach((v, k) => (k ? ctx.lineTo(px(v.x), py(v.y)) : ctx.moveTo(px(v.x), py(v.y))));
+      ctx.stroke();
+    }
   }
   ctx.strokeStyle = 'rgba(255, 179, 71, 0.3)';
-  sim.geo.feeders.forEach((_, i) => {
-    const pts = holdOutline(sim, i);
+  for (const star of Object.values(sim.geo.stars)) {
+    const pts = holdOutline(Object.values(star.outer)[0].orbit);
     ctx.beginPath();
     pts.forEach((p, k) => (k ? ctx.lineTo(px(p.x), py(p.y)) : ctx.moveTo(px(p.x), py(p.y))));
     ctx.closePath();
     ctx.stroke();
-  });
+  }
   ctx.setLineDash([]);
 
-  // Runway.
+  // Runways.
   ctx.strokeStyle = '#d8e6dc';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(px(RUNWAY.x), py(RUNWAY.y));
-  ctx.lineTo(px(RUNWAY.x - sim.geo.k * RUNWAY.lengthNm), py(RUNWAY.y));
   ctx.fillStyle = '#d8e6dc';
-  ctx.fillText(RUNWAY.name, px(RUNWAY.x - (sim.geo.k * RUNWAY.lengthNm) / 2) - 10, py(RUNWAY.y) + 14);
-  ctx.stroke();
+  ctx.lineWidth = 3;
+  for (const r of sim.geo.runways) {
+    ctx.beginPath();
+    ctx.moveTo(px(r.x), py(r.y));
+    ctx.lineTo(px(r.x + r.dir.x * r.lengthNm), py(r.y + r.dir.y * r.lengthNm));
+    ctx.stroke();
+    ctx.fillText(r.ident, px(r.x) - 10, py(r.y) + (r.dir.x < 0 ? -10 : 12));
+  }
   ctx.lineWidth = 1;
 
   // Fixes.
   ctx.fillStyle = 'rgba(185, 216, 196, 0.7)';
-  for (const f of [...sim.geo.feeders, FAF]) {
+  for (const f of Object.values(sim.geo.stars).map((st) => st.hold)) {
     const x = px(f.x);
     const y = py(f.y);
     ctx.beginPath();
@@ -142,7 +142,7 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
     ctx.lineTo(x - 4, y + 3);
     ctx.closePath();
     ctx.stroke();
-    ctx.fillText(f.name, x + 7, y + 8);
+    ctx.fillText(f.id, x + 7, y + 8);
   }
 
   // Traffic: history dots, target, leader line, data block.

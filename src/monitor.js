@@ -7,7 +7,9 @@
 // There is no airship paragraph in 7110.65 or the AIM, so a blimp is only caught for what it breaks: separation,
 // and speed orders it cannot fly.
 
-import { FAF, RUNWAY } from './sim.js';
+import { sepView, toRunway } from './sim.js';
+import { lostSeparation } from './separation.js';
+import { sameWakeRunway } from './airspace.js';
 import { wakeMinNm } from './fleet.js';
 import { PLACES } from './places.js';
 import { CALM_KT, FLOWS, components } from './weather.js';
@@ -28,8 +30,8 @@ export const PARA = Object.freeze({
 });
 
 // 5-7-1: no speed adjustment inside the final approach fix on final or a point 5 miles from the runway,
-// whichever is closer to the runway.
-export const NO_SPEED_INSIDE_NM = Math.min(Math.hypot(FAF.x - RUNWAY.x, FAF.y - RUNWAY.y), 5);
+// whichever is closer to the runway. The FAF is the real one for the aircraft's runway, from the approach data.
+export const noSpeedInsideNm = (a) => (a.route ? Math.min(a.route.fafDistNm, 5) : 5);
 
 export function createMonitor() {
   return {
@@ -86,8 +88,6 @@ function surface(m, t) {
 }
 
 const name = (a) => a.callsign ?? `target ${a.id}`;
-const remaining = (sim, a) => sim.geo.feeders[a.feeder].l1 + sim.geo.l2 - a.s;
-const distToRunway = (a) => Math.hypot(a.x - RUNWAY.x, a.y - RUNWAY.y);
 
 export function observe(m, sim) {
   const { t, aircraft, cfg } = sim;
@@ -108,13 +108,13 @@ export function observe(m, sim) {
       const b = aircraft[j];
       const dv = Math.abs(a.alt - b.alt);
       const dh = Math.hypot(a.x - b.x, a.y - b.y);
-      if (dh < cfg.latSepNm - EPS && dv < cfg.vertSepFt - EPS) {
+      if (lostSeparation(dh, dv, sepView(a), sepView(b), cfg)) {
         flag(
           `sep:${Math.min(a.id, b.id)}:${Math.max(a.id, b.id)}`,
           PARA.SEP,
           'Separation minima lost',
           [a.id, b.id],
-          `${name(a)} and ${name(b)}: ${dh.toFixed(1)} NM and ${Math.round(dv)} ft apart; ${cfg.latSepNm} NM or ${cfg.vertSepFt} ft required`,
+          `${name(a)} and ${name(b)}: ${dh.toFixed(1)} NM and ${Math.round(dv)} ft apart; ${cfg.latSepNm} NM or ${cfg.vertSepFt} ft required (or the parallel-approach minimum when both are established on adjacent finals)`,
         );
       }
     }
@@ -182,18 +182,19 @@ export function observe(m, sim) {
     const a = byId.get(o.id);
     if (!a) continue;
     const phase = o.phase ?? a.phase;
-    const dist = o.dist ?? distToRunway(a);
+    const dist = o.dist ?? toRunway(a);
+    const limit = o.limit ?? noSpeedInsideNm(a);
     if (phase === 'hold') {
       log(m, t, PARA.SPEED_ADJ, 'Speed adjustment in a holding pattern', [a.id], `${name(a)} told to fly ${Math.round(o.kt)} kt in the hold`);
     }
-    if (phase === 'inner' && dist < NO_SPEED_INSIDE_NM) {
+    if (phase === 'inner' && dist < limit) {
       log(
         m,
         t,
         PARA.SPEED_ADJ,
         'Speed adjustment inside the final approach fix',
         [a.id],
-        `${name(a)} told to fly ${Math.round(o.kt)} kt ${dist.toFixed(1)} NM from the runway; none inside ${NO_SPEED_INSIDE_NM} NM`,
+        `${name(a)} told to fly ${Math.round(o.kt)} kt ${dist.toFixed(1)} NM from the runway; none inside ${limit.toFixed(1)} NM`,
       );
     }
     if (o.kt > (a.maxKt ?? Infinity) || o.kt < (a.minKt ?? 0)) {
@@ -216,7 +217,7 @@ export function observe(m, sim) {
       if (inner.some((a) => a.id === lead.id)) continue;
       const landed = sim.landed.findLast((l) => l.callsign === lead.callsign);
       const follow = m.inner.items
-        .filter((f) => f.rem > lead.rem && inner.some((a) => a.id === f.id))
+        .filter((f) => f.rem > lead.rem && sameWakeRunway(f.rwy, lead.rwy) && inner.some((a) => a.id === f.id))
         .sort((x, y) => x.rem - y.rem)[0];
       if (!landed || !follow) continue;
       const min = wakeMinNm(lead.wake, follow.wake);
@@ -235,7 +236,7 @@ export function observe(m, sim) {
   }
   m.inner = {
     t,
-    items: inner.map((a) => ({ id: a.id, callsign: a.callsign, wake: a.wake, rem: remaining(sim, a), kt: a.speedKt })),
+    items: inner.map((a) => ({ id: a.id, callsign: a.callsign, wake: a.wake, rwy: a.rwy, rem: toRunway(a), kt: a.speedKt })),
   };
 
   // 9-8-1 and AIM 7-7-4: unidentified anomalous phenomena.

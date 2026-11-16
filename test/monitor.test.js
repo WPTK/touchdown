@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, step } from '../src/sim.js';
 import { createMonitor, observe, PARA } from '../src/monitor.js';
+import { createWeather } from '../src/weather.js';
+import { SCENARIOS } from '../src/scenarios.js';
 
 let nextId = 1;
 const plane = (o = {}) => ({
@@ -23,6 +25,11 @@ const rig = (...planes) => {
   const sim = createSim({ seed: 1, demandPerHour: 0 });
   sim.aircraft.push(...planes);
   return { sim, m: createMonitor() };
+};
+// An aircraft released from CHPPR1's hold fix to 26R, s NM along its inner route.
+const onRoute = (sim, o, left) => {
+  const route = sim.geo.stars.CHPPR1.routes['26R'];
+  return Object.assign(o, { phase: 'inner', rwy: '26R', route, s: route.path.len - left });
 };
 const tick = (sim, m, n = 1) => {
   for (let i = 0; i < n; i++) {
@@ -100,6 +107,8 @@ test('5-7-1: speed orders in a hold, inside 5 NM, or beyond the aircraft fire; o
   const slow = plane({ phase: 'transit', maxKt: 60 });
   const ok = plane({ phase: 'transit', x: -30 });
   const { sim, m } = rig(hold, close, far, slow, ok);
+  onRoute(sim, close, 3); // inside 5 NM of the runway, inside the real FAF
+  onRoute(sim, far, 8);
   sim.orders.push(
     { t: 0, id: hold.id, kt: 200 },
     { t: 0, id: close.id, kt: 200 },
@@ -116,12 +125,11 @@ test('5-7-1: speed orders in a hold, inside 5 NM, or beyond the aircraft fire; o
 
 test('5-5-4 wake: the minimum must exist when the leader is over the threshold', () => {
   for (const [gapNm, fires] of [[3, true], [6, false]]) {
-    const lead = plane({ phase: 'inner', wake: 'B', feeder: 0, callsign: 'LEAD' });
-    const follow = plane({ phase: 'inner', wake: 'F', feeder: 0, callsign: 'FLW' });
+    const lead = plane({ phase: 'inner', wake: 'B', callsign: 'LEAD' });
+    const follow = plane({ phase: 'inner', wake: 'F', callsign: 'FLW' });
     const { sim, m } = rig(lead, follow);
-    const total = sim.geo.feeders[0].l1 + sim.geo.l2;
-    lead.s = total - 0.1;
-    follow.s = total - 0.1 - gapNm;
+    onRoute(sim, lead, 0.1);
+    onRoute(sim, follow, 0.1 + gapNm);
     lead.x = 0;
     follow.x = 20;
     lead.alt = 0;
@@ -167,3 +175,34 @@ for (const [demand, seeds] of [
     }
   });
 }
+
+// West flow above, east flow and every real day here: the safe controller flies all of it on the real geometry.
+test('oracle: the safe controller breaks no rule in any weather scenario, east flow included', () => {
+  for (const sc of SCENARIOS) {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const sim = createSim({ seed, demandPerHour: 30, weather: createWeather({ scenario: sc, seed }) });
+      const m = createMonitor();
+      while (sim.t < 4 * 3600) {
+        step(sim, 1);
+        observe(m, sim);
+      }
+      assert.deepEqual(m.violations, [], `${sc.id} seed ${seed}: ${JSON.stringify(m.violations[0])}`);
+    }
+  }
+});
+
+// Without the PRM/FMA flag the parallels run dependent (5-9-6, 1.5 NM diagonal). The safe controller plans for it.
+test('oracle: the safe controller breaks no rule with the PRM flag off', () => {
+  for (const flowWx of [null, 'east-flow']) {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const weather = flowWx ? createWeather({ scenario: SCENARIOS.find((s) => s.id === flowWx), seed }) : null;
+      const sim = createSim({ seed, demandPerHour: 30, config: { prm: false }, weather });
+      const m = createMonitor();
+      while (sim.t < 3 * 3600) {
+        step(sim, 1);
+        observe(m, sim);
+      }
+      assert.deepEqual(m.violations, [], `${flowWx ?? 'calm'} seed ${seed}: ${JSON.stringify(m.violations[0])}`);
+    }
+  }
+});

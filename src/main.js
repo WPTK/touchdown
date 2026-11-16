@@ -240,7 +240,7 @@ function updatePanel() {
     ...sim.queue.map((a, i) => {
       const li = document.createElement('li');
       li.className = a.phase;
-      const fix = sim.geo.feeders[a.feeder].name;
+      const fix = a.fix;
       const cells = [
         ['n', String(i + 1)],
         ['', a.callsign],

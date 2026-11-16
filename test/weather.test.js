@@ -188,13 +188,16 @@ test('wind on final changes groundspeed and the landing gap follows it', () => {
   assert.equal(st.flow, 'east'); // 090 at 25 kt: 3-5-1 gives east flow, so the wind is a headwind again
   step(st, 1);
   near(st.finalGsKt, 135);
-  // Time gap and distance gap drift apart: the same 120 s is 4.67 NM at 140 kt and 5.33 NM at 160 kt.
+  // The probe flies each release forward with the wind in it, so the gap on a runway is 3 NM at the groundspeed on final:
+  // 77 s at 140 kt, not the 68 s it is at 160 kt.
   run(sh, 3);
   assert.equal(sh.losses.length, 0);
-  const times = sh.landed.map((l) => l.landT).sort((a, b) => a - b);
-  const gaps = times.slice(1).map((t, i) => t - times[i]);
-  assert.ok(gaps.length > 20);
-  assert.ok(Math.min(...gaps) >= 119, `tightest landing gap ${Math.min(...gaps)} s`);
+  assert.ok(sh.landed.length > 20);
+  for (const rw of new Set(sh.landed.map((l) => l.rwy))) {
+    const times = sh.landed.filter((l) => l.rwy === rw).map((l) => l.landT).sort((a, b) => a - b);
+    const gaps = times.slice(1).map((t, i) => t - times[i]);
+    assert.ok(Math.min(...gaps) >= 76, `tightest landing gap on ${rw} ${Math.min(...gaps)} s`);
+  }
 });
 
 test('a wind shift turns the runway around, the airspace drains first, and nothing is lost', () => {
@@ -218,8 +221,8 @@ test('a wind shift turns the runway around, the airspace drains first, and nothi
   assert.equal(sawChangeover, true);
   assert.equal(sim.flowChanges.length, 1);
   assert.ok(sim.flowChanges[0].t >= 2 * 3600 + 600);
-  assert.equal(sim.geo.runway.x + 0, 0); // -0 + 0 is 0
-  assert.ok(sim.geo.feeders.every((f) => f.x < 0));
+  assert.deepEqual(sim.geo.runways.map((r) => r.ident), ['08L', '09R', '10']);
+  assert.equal(sim.geo.flow, 'east');
   assert.equal(drain(sim), true);
   assert.equal(sim.losses.length, 0);
   assert.equal(sim.fuelOuts.length, 0);

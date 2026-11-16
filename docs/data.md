@@ -32,9 +32,9 @@ URLs (faa.gov wants a browser user agent, sent openly):
 
 ### What the sim uses
 
-Wake spacing, type, CWT and category drive the sim. `finalKt` and `descentFpm` ride along on each aircraft but don't move it. Every aircraft still flies the inner leg at `innerSpeedKt`, because the separation argument needs equal speeds, so a time gap is a distance gap.
+Wake spacing, type, CWT and category drive the sim. `finalKt` and `descentFpm` ride along on each aircraft but don't move it. Every aircraft still flies the inner route at `innerSpeedKt`, with the wind taken out on final.
 
-Wake minimums apply to consecutive pairs only, as the table does. At 160 kt, 120 s is 5.33 NM, which covers the largest minimum among these types (5 NM). So at default settings wake never binds and the run behaves like the flat 120 s spacing. It binds when `spacingS` drops (a test uses 80 s) or the fleet gains H or I types.
+Wake minimums apply to consecutive pairs only, as the table does, and to pairs on one runway or on parallel runways under 2,500 ft apart (a single runway for wake, 5-5-4). The conflict probe (below) checks them on every release, from the moment both aircraft are established on the final course. At 160 kt, 5 NM is 112 s, so the largest wake minimum among these types is the binding one only on a heavy followed by a light type.
 
 ## Airspace: FAA CIFP for KATL (`data/katl-2611.json`)
 
@@ -149,3 +149,49 @@ node scripts/alternates.js path/to/FAACIFP18    # writes data/alternates-2611.js
 
 KPDK is 15.7 NM at 024 degrees from KATL, KBHM 116.3 NM at 268, KLGC 49.7 NM at 221. The field outside LaGrange is
 not in any FAA record. It is 2.5 NM from the KLGC reference point at 340 degrees; that offset is made up.
+
+## How the sim flies the real airspace (`src/airspace.js`, `src/sim.js`, `src/separation.js`)
+
+The sim draws its routes from `data/katl-2611.json` and types in nothing from memory. The flow table
+(`src/weather.js`) says which runways are in use: west is 26R, 27L and 28, east is 8L, 9R and 10. The data names the
+same runways `08L` and `09R`; `rwId()` pads the flow table's `8L` to match.
+
+| Piece | Where it comes from |
+|---|---|
+| STARs a flow flies | Every STAR whose runway transitions name all three runways. GNDLF3 and JJEDI4 have no runway transitions; they count when the common route ends in a vector (FM) on the side of the field the traffic comes from. West: CHPPR1, GLAVN2, HOBTT3, JJEDI4, ONDRE1, OZZZI2. East: CHPPR1, GLAVN2, GNDLF3, ONDRE1, OZZZI2, SITTH3 |
+| Entry | The first spot an enroute transition comes within 41 NM of the field (the corner posts are about 40.4 NM out). JJEDI4 and GNDLF3 end at the corner post, so those arrivals come in on the radial for the last 2 NM (a sim choice) |
+| Hold fix | The first fix of the STAR's runway transition, or the first fix of a STAR that has none. 27 to 30 NM out. The holding pattern is a right-hand orbit of 0.85 NM radius, tangent to the inbound course (a sim choice; the data's hold records are not used) |
+| Route to the runway | The runway transition, then the ILS transition that starts at the STAR's last fix, the intermediate fix, the FAF and the threshold. Where the STAR ends in an FM vector the aircraft flies straight to the nearest initial approach fix (a sim choice) |
+| FAF | The `fixRole` FAF leg of each ILS, 5.2 to 5.5 NM from the threshold. This is the distance the 5-7-1 check uses (or 5 NM, whichever is closer) |
+| Altitudes | 'At' and 'at or above' constraints on the legs. The FAF has an altitude and no constraint type; it is flown as 'at' (the glideslope intercept altitude). The threshold is the runway elevation plus the threshold crossing height |
+| Final course | The first vertex after which the route stays on the runway centerline (within 0.06 NM). The pair rule below counts an aircraft as established from there |
+
+Altitude profile. The head leaves the hold fix at 12,000 ft (`baseLevelFt`), the level HOBTT3 and SITTH3 publish at
+their hold fix. From there it descends at 230 ft per NM, steeper where an 'at' altitude is otherwise out of reach,
+never below an 'at or above' altitude still ahead, and from the FAF it flies the glidepath to the threshold. The
+steepest case is OZZZI2: 'at 9,000' 2.9 NM past the hold fix is about 1,030 ft per NM, 2,800 fpm at 160 kt for 2.9 NM
+(the design check allows 1,100). `checkDesign` refuses a config where the released aircraft does not stay 1,000 ft
+under the stack while the stack steps down.
+
+How separation is kept. Everything outside the hold fix stays on the level stack from before: one level per queued
+aircraft, 1,000 ft apart, everyone stepping down together when the head leaves. Inside, the safe controller runs the
+candidate's whole flight forward (3 s steps, the deterministic motion model, the wind at the time) against every
+aircraft already released and releases it to the runway that gives no conflict, the least used first, then the
+shortest. The probe adds 0.3 NM and 150 ft to the minima, and a wake minimum on a shared final. `separation.js` is
+the single rule both the probe and the monitor use.
+
+Parallel finals (5-9-6, 5-9-7, 5-9-8). Two aircraft established on adjacent finals of different runways are not held to
+the 3 NM / 1,000 ft rule:
+
+- 26R/27L (about 6,450 ft apart) and 8L/9R: simultaneous independent, no minimum between the finals.
+- 27L/28 and 9R/10 (about 4,200 ft apart, under 4,300): the same, with PRM (`cfg.prm`, on by default). Without PRM the
+  pair is dependent, with a 1.5 NM diagonal.
+- Under 2,500 ft apart: one runway for wake and the general rule. KATL's active triples have no such pair.
+
+Until both are established (the turn-on), and always on the same final, the general rule applies. The no-transgression
+zone is not modelled.
+
+Capacity. One aircraft leaves a hold fix per step-down: 1,000 ft at 520 fpm is 115 s, 31 an hour at most. Laps in the
+hold and the probe's waits bring the sustained rate to about 25 an hour (23.6 to 27.2 over six seeds at overload). The
+three runways do not raise it; the level stack is the limit. Demand above that waits upstream, so the oracle sweeps at
+12, 24 and 45 an hour with 20 seeds each, west and east, all show zero violations. Nothing is capped.

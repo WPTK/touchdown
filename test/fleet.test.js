@@ -79,24 +79,22 @@ test('pickType is deterministic for a seed and covers the mix', () => {
   assert.ok(share((t) => t.cwt === 'G') > 0.15, 'some regional jets');
 });
 
-test('the sequencer spaces each pair by the larger of the radar and wake minimum', () => {
-  // A short radar spacing makes the wake term bind (5 NM at 160 kt is 112 s).
-  const spacingS = 80;
-  const sim = createSim({ seed: 9, demandPerHour: 40, config: { spacingS } });
+test('landings on one runway are spaced by at least the wake minimum', () => {
+  // Wake is per runway (5-5-4). At the stack's release rate a 5 NM minimum (112 s at 160 kt) never binds on its own,
+  // so this checks the minimum holds, not that it was the reason for the gap.
+  const sim = createSim({ seed: 9, demandPerHour: 40, config: { spacingS: 20 } });
   while (sim.t < 3 * 3600) step(sim, 1);
   assert.equal(drain(sim), true);
   assert.deepEqual(sim.losses, []);
-  const byCs = new Map(sim.landed.map((l) => [l.callsign, l]));
-  const order = [...byCs.values()].sort((a, b) => a.landT - b.landT);
-  let bound = 0;
-  for (let i = 1; i < order.length; i++) {
-    const [lead, fol] = [order[i - 1], order[i]];
-    const wake = wakeMinNm(lead.wake, fol.wake);
-    const need = Math.max(spacingS, wake ? (wake / sim.cfg.innerSpeedKt) * 3600 : 0);
-    if (need > spacingS) bound++;
-    assert.ok(fol.landT - lead.landT >= need - 1e-6, `${lead.type} ${lead.wake} then ${fol.type} ${fol.wake}: ${(fol.landT - lead.landT).toFixed(1)} s < ${need.toFixed(1)} s`);
+  for (const rw of new Set(sim.landed.map((l) => l.rwy))) {
+    const order = sim.landed.filter((l) => l.rwy === rw).sort((a, b) => a.landT - b.landT);
+    for (let i = 1; i < order.length; i++) {
+      const [lead, fol] = [order[i - 1], order[i]];
+      const wake = wakeMinNm(lead.wake, fol.wake);
+      const need = wake ? (wake / sim.cfg.innerSpeedKt) * 3600 : 0;
+      assert.ok(fol.landT - lead.landT >= need - 1e-6, `${rw}: ${lead.type} then ${fol.type}: ${(fol.landT - lead.landT).toFixed(1)} s < ${need.toFixed(1)} s`);
+    }
   }
-  assert.ok(bound > 0, 'no pair needed wake spacing; the test proves nothing');
 });
 
 test('every spawned aircraft carries type, wake, category and final speed', () => {
