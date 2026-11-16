@@ -11,7 +11,7 @@ import { PLACES, DIVERT_TO } from './places.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
-const FEED_MAX = 300;
+const FEED_MAX = 1000; // the panel shows 12; the rest is for the tests
 
 const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
 const STEP_RATES = [520, 520, 700, 900, 1200];

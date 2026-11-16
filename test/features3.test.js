@@ -97,5 +97,5 @@ test('floppy upgrade: a progress bar from 0 to 100, three disks, then a new vers
   assert.equal(r.sean.installs, 1);
   assert.equal(r.sean.version, 1);
   assert.equal(floppyProgress(r.sean, r.sim.t), null);
-  assert.ok(r.sean.feed.some((f) => /floppy/i.test(f.text)) && r.sean.feed.some((f) => new RegExp(`${v.replace('.', '\.')} (installed|complete)|Upgrade ${v.replace('.', '\.')} complete`).test(f.text)));
+  assert.ok(r.sean.feed.some((f) => /floppy/i.test(f.text)) && r.sean.feed.some((f) => new RegExp(`${v.replace('.', '\\.')} (installed|complete)|Upgrade ${v.replace('.', '\.')} complete`).test(f.text)));
 });

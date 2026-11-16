@@ -98,7 +98,7 @@ const LINES = {
   landBrag: ['Cleared ${cs} to land on ${thing}. Runway utilization is now unlimited.'],
   floppyStart: [
     'Upgrade ${v} found on a floppy disk. Installing. Please do not remove the disk. It is the only copy.',
-    'Loading D.U.F.F.Y. ${v} from a floppy. The FAA plans to replace these by the end of 2028. I have until then.',
+    'Loading D.U.F.F.Y. ${v} from a floppy. The FAA plans to replace these by 2028. I have until then.',
   ],
   floppyDisk: ['Insert disk ${n} of ${total}.', 'Disk ${n} of ${total} unreadable. Retrying with confidence.'],
   floppyDrive: ['Replacement floppy drive sourced from an online auction. Procurement is a legacy concept.'],

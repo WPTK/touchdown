@@ -152,7 +152,8 @@ function updatePanel() {
     $('floppy').value = fp.pct;
     $('floppyText').textContent = `A:\\ D.U.F.F.Y. ${fp.version}, disk ${fp.disk} of 3, ${fp.pct}%`;
   }
-  $('score').textContent = `${monitor.violations.length} points (one per logged violation), ${trophies.unlocked.size} of ${ACHIEVEMENTS.length} achievements`;
+  const points = truth.violations;
+  $('score').textContent = `${points} ${points === 1 ? 'point' : 'points'} (one per logged violation), ${trophies.unlocked.size} of ${ACHIEVEMENTS.length} achievements`;
   $('trophies').replaceChildren(
     ...ACHIEVEMENTS.map((a) => {
       const li = document.createElement('li');
