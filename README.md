@@ -68,6 +68,14 @@ are real, and the numbers come from a run of the sim (`node scripts/deck-numbers
   separation (2,000 ft for the odd non-RVSM aircraft). Every time one crosses a boundary S.E.A.N. hands it off to
   S.E.A.N. The scope opens on Atlanta. Region, ATL and CLT buttons jump around, the wheel zooms and a drag pans, and
   zooming into a hub turns it into that airport's TRACON. Weather is still Atlanta only
+- A scope that reads like a terminal radar. Each target hangs a data block off a leader line that points one of eight
+  directions, and the blocks are placed together so none lands on another, even in a stacked hold or over parallel
+  finals. When a full block (callsign, then altitude, speed, type and wake) won't fit anywhere, the target drops to a
+  limited block of callsign and altitude, the minimum JO 7110.65 5-3-8 asks for. 5-14-8 allows suspending a track only
+  when block overlap makes the scope unworkable, so overlap is prevented first. Range rings follow the zoom, and the
+  CIFP video map (runways, STARs, fixes, Class B) draws for ATL and CLT and, zoomed in, on the regional view. The
+  look is modelled on STARS; the layout details (eight directions, the leader lengths, what sits on which line) are
+  this sim's design, not taken from an FAA display document, which I couldn't get hold of
 - The first separation loss. Everything on the scope forms the meme, in ASCII
 - A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and

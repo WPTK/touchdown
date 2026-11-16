@@ -2,6 +2,14 @@
 import { holdOutline } from './sim.js';
 import { artcc, region, HUBS, LABELS, localToRegion } from './frame.js';
 import { screenOf } from './view.js';
+import { layoutBlocks } from './datablock.js';
+
+const layoutState = new WeakMap(); // per sim: each target's leader direction and length from the last frame
+const regionState = new Map();
+const CHAR_W = 6.6;
+const LINE_H = 12;
+// Range ring spacing by range: tighter rings when zoomed in, so there are always a few in view.
+export const ringSpacingNm = (rangeNm) => (rangeNm <= 12 ? 2 : rangeNm <= 25 ? 5 : rangeNm <= 70 ? 10 : rangeNm <= 150 ? 20 : 50);
 
 const COLORS = { transit: '#7dfc9c', hold: '#ffb347', inner: '#6ce0ff' };
 const BLIMP = '#ffe14a';
@@ -61,46 +69,46 @@ function drawSharknado(ctx, tornado, { px, py, scale }, t) {
   ctx.fillText('+FC', x + r + 4, y - r - 2);
 }
 
-export function drawScope(ctx, sim, trails, { width, height, tornado = null, rangeNm = 50 }) {
+// The leader line and the block's text, at the spot layoutBlocks chose.
+function drawBlock(ctx, color, x, y, p, item, lineH = LINE_H) {
+  const r = p.rect;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x + Math.sign(r.ex - x) * 4, y + Math.sign(r.ey - y) * 4);
+  ctx.lineTo(r.ex, r.ey);
+  ctx.stroke();
+  const lines = p.low ? item.lowLines : item.lines;
+  lines.forEach((l, k) => ctx.fillText(l, r.x + 2, r.y + 2 + lineH * (k + 0.5)));
+}
+
+const mapCache = new WeakMap(); // sim.geo -> { key, canvas }; a flow change makes a new geo, so a new map
+
+function paintMap(ctx, sim, width, height, rangeNm, scale) {
+  if (width < 1 || height < 1) return;
+  if (typeof document === 'undefined') return videoMap(ctx, sim, (x) => width / 2 + x * scale, (y) => height / 2 - y * scale);
+  const dpr = ctx.getTransform().a || 1;
+  const key = `${width}|${height}|${rangeNm}|${dpr}`;
+  let e = mapCache.get(sim.geo);
+  if (!e || e.key !== key) {
+    const c = e?.canvas ?? document.createElement('canvas');
+    c.width = Math.round(width * dpr);
+    c.height = Math.round(height * dpr);
+    const m = c.getContext('2d');
+    m.setTransform(dpr, 0, 0, dpr, 0, 0);
+    m.textBaseline = 'middle';
+    videoMap(m, sim, (x) => width / 2 + x * scale, (y) => height / 2 - y * scale);
+    e = { key, canvas: c };
+    mapCache.set(sim.geo, e);
+  }
+  ctx.drawImage(e.canvas, 0, 0, width, height);
+}
+
+// Everything the CIFP gives the map for one TRACON, in the sim's own frame: `px` and `py` take NM east and north of the
+// airport to screen pixels.
+function videoMap(ctx, sim, px, py) {
   const classB = sim.ap.classB;
-  const blips = [];
-  const scale = Math.min(width, height) / 2 / rangeNm;
-  const cx = width / 2;
-  const cy = height / 2;
-  const px = (x) => cx + x * scale;
-  const py = (y) => cy - y * scale;
-
-  ctx.fillStyle = '#050b08';
-  ctx.fillRect(0, 0, width, height);
-  if (sim.outages.some((o) => sim.t >= o.startT && sim.t < o.endT)) {
-    // Copper outage: nothing on the scope, and the traffic is still out there.
-    ctx.fillStyle = '#0a1410';
-    ctx.fillRect(0, 0, width, height);
-    ctx.font = '14px ui-monospace, "Cascadia Mono", Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ff5c5c';
-    ctx.fillText('SURVEILLANCE LOST', width / 2, height / 2 - 10);
-    ctx.fillStyle = '#5f8270';
-    ctx.fillText('radar and voice circuit down', width / 2, height / 2 + 12);
-    ctx.textAlign = 'left';
-    return blips;
-  }
   ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
-  ctx.textBaseline = 'middle';
-  drawPrecip(ctx, sim, { px, py, scale });
-  if (tornado) drawSharknado(ctx, tornado, { px, py, scale }, sim.t);
-
-  // Range rings every 10 NM.
-  ctx.strokeStyle = 'rgba(110, 190, 140, 0.16)';
-  ctx.lineWidth = 1;
-  for (let r = 10; r <= 40; r += 10) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(110, 190, 140, 0.35)';
-    ctx.fillText(String(r), cx + 3, cy - r * scale + 8);
-  }
-
   // Class B: the FAA's outline of each shelf, faint.
   ctx.strokeStyle = 'rgba(120, 150, 255, 0.2)';
   for (const area of classB.areas) {
@@ -192,21 +200,81 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null, ran
     // Inside 12 NM the ILS fixes stack on top of each other; name only the FAFs and hold fixes there.
     if (hold || f.role === 'faf' || Math.hypot(f.x, f.y) > 12) ctx.fillText(f.role === 'faf' ? `${id} FAF` : id, x + 5, y + 6);
   }
+}
+
+export function drawScope(ctx, sim, trails, { width, height, tornado = null, rangeNm = 50 }) {
+  const blips = [];
+  const scale = Math.min(width, height) / 2 / rangeNm;
+  const cx = width / 2;
+  const cy = height / 2;
+  const px = (x) => cx + x * scale;
+  const py = (y) => cy - y * scale;
+
+  ctx.fillStyle = '#050b08';
+  ctx.fillRect(0, 0, width, height);
+  if (sim.outages.some((o) => sim.t >= o.startT && sim.t < o.endT)) {
+    // Copper outage: nothing on the scope, and the traffic is still out there.
+    ctx.fillStyle = '#0a1410';
+    ctx.fillRect(0, 0, width, height);
+    ctx.font = '14px ui-monospace, "Cascadia Mono", Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff5c5c';
+    ctx.fillText('SURVEILLANCE LOST', width / 2, height / 2 - 10);
+    ctx.fillStyle = '#5f8270';
+    ctx.fillText('radar and voice circuit down', width / 2, height / 2 + 12);
+    ctx.textAlign = 'left';
+    return blips;
+  }
+  ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
+  ctx.textBaseline = 'middle';
+  drawPrecip(ctx, sim, { px, py, scale });
+  if (tornado) drawSharknado(ctx, tornado, { px, py, scale }, sim.t);
+
+  // Range rings, spaced by the view's range.
+  ctx.strokeStyle = 'rgba(110, 190, 140, 0.16)';
+  ctx.lineWidth = 1;
+  const ring = ringSpacingNm(rangeNm);
+  const maxR = Math.hypot(width, height) / 2 / scale;
+  for (let r = ring; r <= Math.min(maxR, rangeNm * 1.15); r += ring) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(110, 190, 140, 0.35)';
+    ctx.fillText(String(r), cx + 3, cy - r * scale + 8);
+  }
+
+  // The video map: Class B, procedures, finals, runways and fixes. It only changes with the flow, size or range, so it is
+  // drawn once into its own canvas and copied in.
+  paintMap(ctx, sim, width, height, rangeNm, scale);
   ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
 
-  // Traffic: history dots, target, leader line, data block.
-  for (const a of sim.aircraft) {
+  // Traffic: history dots, target, leader line, data block. Blocks are placed together so none lands on another.
+  const items = sim.aircraft.map((a) => {
+    const fl = String(Math.round(a.alt / 100)).padStart(3, '0');
+    const vs = a.vsFpm < -100 ? '↓' : a.vsFpm > 100 ? '↑' : ' ';
+    return {
+      id: a.id,
+      x: px(a.x),
+      y: py(a.y),
+      prio: a.phase === 'inner' ? 2 : a.phase === 'transit' ? 1 : 0,
+      lines: [a.callsign, `${fl}${vs}${String(Math.round(a.speedKt / 10)).padStart(2, '0')} ${a.type} ${a.wake}`],
+      lowLines: [`${a.callsign} ${fl}`],
+    };
+  });
+  if (!layoutState.has(sim)) layoutState.set(sim, new Map());
+  const avoid = sim.geo.runways.map((r) => ({ x: px(r.x) - 14, y: py(r.y) - 14, w: 28, h: 28 }));
+  const { placed } = layoutBlocks(items, layoutState.get(sim), { charW: CHAR_W, lineH: LINE_H, width, height, avoid });
+  sim.aircraft.forEach((a, i) => {
     const blimp = a.kind === 'blimp';
     const color = blimp ? BLIMP : COLORS[a.phase];
     const hist = trails.get(a.id) || [];
-    hist.forEach((p, i) => {
+    hist.forEach((p, k) => {
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.12 + (0.4 * i) / hist.length;
+      ctx.globalAlpha = 0.12 + (0.4 * k) / hist.length;
       ctx.fillRect(px(p.x) - 1, py(p.y) - 1, 2, 2);
     });
     ctx.globalAlpha = 1;
-    const x = px(a.x);
-    const y = py(a.y);
+    const { x, y } = items[i];
     blips.push({ x, y });
     ctx.strokeStyle = color;
     if (blimp) {
@@ -216,16 +284,8 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null, ran
     } else {
       ctx.strokeRect(x - 3, y - 3, 6, 6);
     }
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y - 4);
-    ctx.lineTo(x + 14, y - 14);
-    ctx.stroke();
-    ctx.fillStyle = color;
-    const fl = String(Math.round(a.alt / 100)).padStart(3, '0');
-    const vs = a.vsFpm < -100 ? '↓' : a.vsFpm > 100 ? '↑' : ' ';
-    ctx.fillText(a.callsign, x + 16, y - 20);
-    ctx.fillText(`${fl}${vs}${String(Math.round(a.speedKt / 10)).padStart(2, '0')} ${a.type} ${a.wake}`, x + 16, y - 8);
-  }
+    drawBlock(ctx, color, x, y, placed.get(a.id), items[i]);
+  });
 
   // Unidentified targets: no leader line, no data block, and a pulse nothing else on the scope has.
   for (const u of sim.anomalies) {
@@ -258,6 +318,26 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null, ran
 // The regional picture: the five centres' boundaries, every hub in them, the two TRACON sims' traffic and the enroute
 // traffic crossing at altitude, with a flash where a handoff just happened. `view` is {cx, cy, rangeNm} in the regional
 // frame. Returns the screen position of every target drawn, for the Loss animation.
+// A hub's video map in the regional frame (runways, STAR routes, named fixes), converted once per flow.
+const regionMapCache = new WeakMap();
+function regionMap(ident, sim) {
+  let m = regionMapCache.get(sim.geo);
+  if (m) return m;
+  const to = (x, y) => localToRegion(ident, x, y);
+  const lines = [];
+  const fixes = new Map();
+  for (const star of Object.values(sim.geo.stars)) {
+    for (const path of [...Object.values(star.outer).map((o) => o.path), ...Object.values(star.routes).map((r) => r.path)]) {
+      lines.push(path.verts.map((v) => to(v.x, v.y)));
+      for (const v of path.verts) if (v.id && !fixes.has(v.id)) fixes.set(v.id, to(v.x, v.y));
+    }
+  }
+  const runways = sim.geo.runways.map((r) => ({ ident: r.ident, a: to(r.x, r.y), b: to(r.x + r.dir.x * r.lengthNm, r.y + r.dir.y * r.lengthNm) }));
+  m = { lines, fixes: [...fixes].map(([id, p]) => ({ id, ...p })), runways };
+  regionMapCache.set(sim.geo, m);
+  return m;
+}
+
 const MONO = 'ui-monospace, "Cascadia Mono", Consolas, monospace';
 export function drawRegion(ctx, { atl, clt, en }, view, { width, height }) {
   const { scale, px, py } = screenOf(view, width, height);
@@ -307,9 +387,40 @@ export function drawRegion(ctx, { atl, clt, en }, view, { width, height }) {
     ctx.stroke();
   }
 
-  // Arrivals in the two TRACON sims.
-  const near = view.rangeNm < 160;
-  for (const [ident, sim] of [['KATL', atl], ['KCLT', clt]]) {
+  // The CIFP video map of each TRACON, once the scope is zoomed in far enough to read it.
+  if (view.rangeNm < 130) {
+    for (const [ident, sim] of [['KATL', atl], ['KCLT', clt]]) {
+      const m = regionMap(ident, sim);
+      ctx.strokeStyle = 'rgba(108, 224, 255, 0.16)';
+      for (const l of m.lines) {
+        ctx.beginPath();
+        l.forEach((v, k) => (k ? ctx.lineTo(px(v.x), py(v.y)) : ctx.moveTo(px(v.x), py(v.y))));
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#d8e6dc';
+      ctx.fillStyle = '#d8e6dc';
+      ctx.lineWidth = 2;
+      for (const r of m.runways) {
+        ctx.beginPath();
+        ctx.moveTo(px(r.a.x), py(r.a.y));
+        ctx.lineTo(px(r.b.x), py(r.b.y));
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+      if (view.rangeNm < 75) {
+        ctx.font = `9px ${MONO}`;
+        ctx.fillStyle = 'rgba(185, 216, 196, 0.55)';
+        for (const f of m.fixes) ctx.fillText(f.id, px(f.x) + 4, py(f.y) + 5);
+        ctx.font = `10px ${MONO}`;
+      }
+    }
+  }
+  // Targets: arrivals in the two TRACON sims and the enroute traffic. Blocks are the limited kind (callsign, and altitude
+  // for the enroute traffic), placed together so none lands on another.
+  const showArr = view.rangeNm < 160;
+  const showEn = view.rangeNm < 260;
+  const items = [];
+  for (const [k, [ident, sim]] of [['KATL', atl], ['KCLT', clt]].entries()) {
     for (const a of sim.aircraft) {
       const p = localToRegion(ident, a.x, a.y);
       const x = px(p.x);
@@ -317,11 +428,9 @@ export function drawRegion(ctx, { atl, clt, en }, view, { width, height }) {
       blips.push({ x, y });
       ctx.fillStyle = a.kind === 'blimp' ? BLIMP : COLORS[a.phase];
       ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-      if (near) ctx.fillText(a.callsign, x + 5, y - 5);
+      if (showArr) items.push({ id: k * 1e6 + a.id, x, y, prio: 1, lines: [a.callsign], color: ctx.fillStyle });
     }
   }
-
-  // Enroute traffic: a target, a 6 minute vector, and a data block when there is room to read it.
   for (const a of en.aircraft) {
     const x = px(a.x);
     const y = py(a.y);
@@ -330,13 +439,22 @@ export function drawRegion(ctx, { atl, clt, en }, view, { width, height }) {
     const east = a.course < 180;
     ctx.strokeStyle = east ? 'rgba(108, 224, 255, 0.8)' : 'rgba(255, 179, 71, 0.8)';
     ctx.fillStyle = ctx.strokeStyle;
+    // A 6 minute vector, then the target.
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(px(a.x + a.vx * 360), py(a.y + a.vy * 360));
     ctx.stroke();
     ctx.strokeRect(x - 2.5, y - 2.5, 5, 5);
-    if (view.rangeNm < 260) ctx.fillText(`${a.callsign} ${String(a.alt).padStart(3, '0')}${a.rvsm ? '' : ' NRVSM'}`, x + 6, y - 6);
+    if (showEn) items.push({ id: 2e6 + a.id, x, y, prio: 0, lines: [`${a.callsign} ${String(a.alt).padStart(3, '0')}${a.rvsm ? '' : ' NRVSM'}`], color: ctx.strokeStyle });
   }
+  if (items.length) {
+    const { placed } = layoutBlocks(items, regionState, { charW: 6, lineH: 11, width, height });
+    for (const it of items) {
+      const p = placed.get(it.id);
+      ctx.font = `10px ${MONO}`;
+      drawBlock(ctx, it.color, it.x, it.y, p, it, 11);
+    }
+  } else regionState.clear();
   // Losses still open and handoffs in the last 20 s.
   ctx.strokeStyle = '#ff5c5c';
   const openIds = new Set([...en.open].flatMap((k) => k.split('-')));
