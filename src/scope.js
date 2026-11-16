@@ -92,6 +92,6 @@ export function drawScope(ctx, sim, trails, { width, height }) {
     const fl = String(Math.round(a.alt / 100)).padStart(3, '0');
     const vs = a.vsFpm < -100 ? '↓' : a.vsFpm > 100 ? '↑' : ' ';
     ctx.fillText(a.callsign, x + 16, y - 20);
-    ctx.fillText(`${fl}${vs}${String(Math.round(a.speedKt / 10)).padStart(2, '0')} ${a.wake}`, x + 16, y - 8);
+    ctx.fillText(`${fl}${vs}${String(Math.round(a.speedKt / 10)).padStart(2, '0')} ${a.type} ${a.wake}`, x + 16, y - 8);
   }
 }
