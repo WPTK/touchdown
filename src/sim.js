@@ -5,10 +5,11 @@
 //   Outer airspace: every aircraft in the arrival queue owns one level, base + 1000 ft x queue position.
 //   When the head leaves, everyone steps down one level at the same moment and the same rate.
 //   Inner airspace: the head leaves its feeder fix only when it is at the base level, the step-down
-//   is done, and at least `spacingS` has passed since the last departure. Both feeder paths have the
+//   is done, and the larger of `spacingS` and the wake minimum behind the last departure has passed. Both feeder paths have the
 //   same length and speed, so that time gap holds all the way to the runway.
 
 import { mulberry32 } from './rng.js';
+import { pickType, wakeMinNm } from './fleet.js';
 
 const KT = 1 / 3600; // NM per second, per knot
 const EPS = 1e-6;
@@ -109,6 +110,7 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {} } = {}) {
     landed: [],
     departures: [],
     lastDepartT: -Infinity,
+    lastDepartWake: null,
     losses: [],
     fuelOuts: [],
     // Tightest pair seen: margin = max(lateral / 3 NM, vertical / 1000 ft); 1 is exactly at minimum.
@@ -148,6 +150,7 @@ function spawn(sim, req, t) {
   const x = cfg.spawnRadiusNm * Math.sin(bearing);
   const y = cfg.spawnRadiusNm * Math.cos(bearing);
   const alt = cfg.baseLevelFt + cfg.levelStepFt * sim.queue.length;
+  const type = pickType(rng);
   const a = {
     id: sim.nextId++,
     callsign: req.callsign,
@@ -160,7 +163,10 @@ function spawn(sim, req, t) {
     alt,
     prevAlt: alt,
     vsFpm: 0,
-    wake: 'M',
+    type: type.icao,
+    wake: type.cwt,
+    apchCat: type.apchCat,
+    finalKt: type.finalKt,
     fromAlt: alt,
     targetAlt: alt,
     stepStartT: t,
@@ -177,11 +183,18 @@ function spawn(sim, req, t) {
   sim.aircraft.push(a);
 }
 
+// Time `a` must trail the last departure: the larger of the radar minimum and the wake minimum (TBL 5-5-4).
+// Everyone flies the inner leg at the same speed, so a time gap is the same distance gap at the threshold.
+function gapS(sim, a) {
+  const wakeNm = sim.lastDepartWake ? wakeMinNm(sim.lastDepartWake, a.wake) : null;
+  return Math.max(sim.cfg.spacingS, wakeNm ? wakeNm / (sim.cfg.innerSpeedKt * KT) : 0);
+}
+
 function canDepart(sim, a, t) {
   return (
     sim.queue[0] === a &&
     outerAlt(sim, a, t) <= sim.cfg.baseLevelFt + EPS &&
-    t >= sim.lastDepartT + sim.cfg.spacingS - EPS
+    t >= sim.lastDepartT + gapS(sim, a) - EPS
   );
 }
 
@@ -197,6 +210,7 @@ function depart(sim, a, t) {
   a.departT = t;
   a.speedKt = sim.cfg.innerSpeedKt;
   sim.lastDepartT = t;
+  sim.lastDepartWake = a.wake;
   sim.departures.push(t);
   const next = sim.queue[0];
   if (next && next.phase === 'hold') planHold(sim, next, t);
@@ -205,7 +219,7 @@ function depart(sim, a, t) {
 // Earliest time the head may leave its feeder fix.
 function readyTime(sim, a) {
   const settle = a.stepStartT + Math.max(0, a.fromAlt - sim.cfg.baseLevelFt) / (sim.cfg.stepRateFpm / 60);
-  return Math.max(sim.lastDepartT + sim.cfg.spacingS, settle);
+  return Math.max(sim.lastDepartT + gapS(sim, a), settle);
 }
 
 // Holding is tracked as a lap count around the orbit; whole numbers are crossings of the fix.
@@ -379,6 +393,8 @@ export function step(sim, dt = 1) {
     for (const a of landedNow) {
       sim.landed.push({
         callsign: a.callsign,
+        type: a.type,
+        wake: a.wake,
         requestT: a.requestT,
         spawnT: a.spawnT,
         landT: a.landT,
