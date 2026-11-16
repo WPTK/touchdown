@@ -5,8 +5,8 @@
 //   Outer airspace: every aircraft in the arrival queue owns one level, base + 1000 ft x queue position.
 //   When the head leaves, everyone steps down one level at the same moment and the same rate.
 //   Inner airspace: the head leaves its feeder fix only when it is at the base level, the step-down
-//   is done, and the larger of `spacingS` and the wake minimum behind the last departure has passed. Both feeder paths have the
-//   same length and speed, so that time gap holds all the way to the runway.
+//   is done, and the larger of `spacingS` and the wake minimum behind the last departure has passed.
+//   Both feeder paths have the same length and speed, so that time gap holds all the way to the runway.
 
 import { mulberry32 } from './rng.js';
 import { pickType, wakeMinNm } from './fleet.js';
@@ -183,7 +183,7 @@ function spawn(sim, req, t) {
   sim.aircraft.push(a);
 }
 
-// Time `a` must trail the last departure: the larger of the radar minimum and the wake minimum (TBL 5-5-4).
+// Consecutive pairs only, as in the table. Time `a` must trail the last departure: the larger of the radar minimum and the wake minimum (TBL 5-5-4).
 // Everyone flies the inner leg at the same speed, so a time gap is the same distance gap at the threshold.
 function gapS(sim, a) {
   const wakeNm = sim.lastDepartWake ? wakeMinNm(sim.lastDepartWake, a.wake) : null;

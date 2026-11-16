@@ -6,7 +6,7 @@ Every number in the sim comes from one of these. Nothing is from memory.
 
 | Value | Source | Retrieved |
 |---|---|---|
-| Wake matrix `CWT_MIN_NM` | JO 7110.65BB, TBL 5-5-4 (wake turbulence separation for on approach), from `atc/chap5_section_5.txt`. A test checks every row against that text. | 2026-11-15 |
+| Wake matrix `CWT_MIN_NM` | JO 7110.65BB, TBL 5-5-4 (wake turbulence separation for on approach), from `atc/chap5_section_5.txt`. A test compares each row's values, in order, to that text. It runs only where the local FAA text exists, so CI skips it. Blank-cell positions are pinned by separate assertions. | 2026-11-15 |
 | CWT letter per type | FAA Order JO 7360.1K (effective 2025-06-12), CWT column. The Aircraft Characteristics Database (ACD) agrees on all 22 types. | 2026-11-16 |
 | Approach category `apchCat` | FAA Aircraft Characteristics Database, `AAC` column (14 CFR 97.3 categories, set from Flight Standardization Board or manufacturer data). | 2026-11-16 |
 | `vrefKt` | ACD `Approach_Speed_knot`: approach speed at maximum allowable landing weight. | 2026-11-16 |
@@ -33,3 +33,5 @@ URLs (faa.gov wants a browser user agent, sent openly):
 ### What the sim uses
 
 Wake spacing, type, CWT and category drive the sim. `finalKt` and `descentFpm` ride along on each aircraft but don't move it. Every aircraft still flies the inner leg at `innerSpeedKt`, because the separation argument needs equal speeds, so a time gap is a distance gap.
+
+Wake minimums apply to consecutive pairs only, as the table does. At 160 kt, 120 s is 5.33 NM, which covers the largest minimum among these types (5 NM). So at default settings wake never binds and the run behaves like the flat 120 s spacing. It binds when `spacingS` drops (a test uses 80 s) or the fleet gains H or I types.

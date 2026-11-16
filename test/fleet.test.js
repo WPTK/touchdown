@@ -16,6 +16,11 @@ test('wakeMinNm spot checks against TBL 5-5-4', () => {
   assert.equal(wakeMinNm('D', 'H'), 6);
   assert.equal(wakeMinNm('E', 'I'), 4);
   assert.equal(wakeMinNm('F', 'I'), 4);
+  assert.equal(wakeMinNm('C', 'D'), null);
+  assert.equal(wakeMinNm('C', 'F'), 3.5);
+  assert.equal(wakeMinNm('C', 'H'), 5);
+  assert.equal(wakeMinNm('D', 'B'), 3);
+  assert.equal(wakeMinNm('E', 'H'), null);
   assert.equal(wakeMinNm('F', 'F'), null);
   assert.equal(wakeMinNm('B', 'A'), null);
   assert.equal(wakeMinNm('I', 'A'), null);
