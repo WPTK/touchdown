@@ -22,7 +22,7 @@ export function seanFlow(windDir, windKt) {
   if (windDir == null || windKt < 5) return { flow: 'west', tail: 0, quote: null };
   const w = components(windDir, windKt, 'west');
   const e = components(windDir, windKt, 'east');
-  const flow = w.tail >= e.tail ? 'west' : 'east';
+  const flow = e.tail - w.tail > 1e-6 ? 'east' : 'west';
   return { flow, tail: Math.round(Math.max(w.tail, e.tail)), quote: TAILWIND_QUOTE, rule: '3-5-1' };
 }
 

@@ -106,3 +106,7 @@ test("S.E.A.N.'s weather lines are in its feed and replay exactly per seed", () 
   assert.match(text, /sharknado/);
   assert.ok(a.sim.controller.sean.wx.forecast.startsWith('KATL '));
 });
+
+test('seanFlow breaks a due north or south wind tie to west, like 3-5-1', () => {
+  for (const dir of [0, 180, 360]) assert.equal(seanFlow(dir, 12).flow, 'west');
+});
