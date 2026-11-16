@@ -32,7 +32,6 @@ let trails;
 let trophies;
 let clt; // Charlotte's TRACON, its own sim with its own S.E.A.N. and monitor
 let cltCtl;
-let cltMonitor;
 let cltTrails;
 let en; // the enroute traffic across the five centres
 let view = defaultView(); // opens on A80, as ever
@@ -73,7 +72,6 @@ function reset() {
   monitor = createMonitor();
   cltCtl = createSean(seed + 1);
   clt = createSim({ seed: seed + 1, airport: 'KCLT', demandPerHour: cltDemand(), controller: cltCtl });
-  cltMonitor = createMonitor();
   cltTrails = new Map();
   en = createEnroute({ seed, perHour: 60, controller: 'sean' });
   lossStart = null;
@@ -344,7 +342,6 @@ function frame(now) {
       step(sim, 1);
       observe(monitor, sim);
       step(clt, 1);
-      observe(cltMonitor, clt);
       stepEnroute(en, 1);
       if (sim.t % TRAIL_EVERY_S === 0) {
         sampleTrails(sim, trails);
@@ -392,8 +389,6 @@ $('reset').addEventListener('click', reset);
 $('shutdown').addEventListener('change', () => ctl.setShutdown(sim, $('shutdown').checked));
 $('relieve').addEventListener('click', () => {
   ctl.relieve(sim);
-  cltCtl.relieve(clt);
-  en.controller = 'safe'; // relieved everywhere, enroute included
   updatePanel();
 });
 for (const box of document.querySelectorAll('[data-filter]')) {
@@ -423,7 +418,7 @@ canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const r = canvas.getBoundingClientRect();
   const sc = screenOf(view, r.width, r.height);
-  setView(zoomAt(view, Math.exp(e.deltaY * 0.0015), sc.nmX(e.clientX - r.left), sc.nmY(e.clientY - r.top)));
+  setView(zoomAt(view, Math.exp(Math.max(-60, Math.min(60, e.deltaY * (e.deltaMode === 1 ? 16 : 1))) * 0.0015), sc.nmX(e.clientX - r.left), sc.nmY(e.clientY - r.top)));
 }, { passive: false });
 let drag = null;
 canvas.addEventListener('pointerdown', (e) => {
@@ -431,7 +426,7 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag) return;
+  if (!drag || hubOf(view)) return; // a TRACON scope stays centred on its airport; zoom out to move around
   const r = canvas.getBoundingClientRect();
   const sc = screenOf(view, r.width, r.height);
   setView(panBy(view, -(e.clientX - drag.x) / sc.scale, (e.clientY - drag.y) / sc.scale));

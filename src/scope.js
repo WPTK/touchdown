@@ -339,8 +339,9 @@ export function drawRegion(ctx, { atl, clt, en }, view, { width, height }) {
   }
   // Losses still open and handoffs in the last 20 s.
   ctx.strokeStyle = '#ff5c5c';
+  const openIds = new Set([...en.open].flatMap((k) => k.split('-')));
   for (const a of en.aircraft) {
-    if (![...en.open].some((k) => k.split('-').includes(String(a.id)))) continue;
+    if (!openIds.has(String(a.id))) continue;
     ctx.beginPath();
     ctx.arc(px(a.x), py(a.y), 9, 0, 2 * Math.PI);
     ctx.stroke();
