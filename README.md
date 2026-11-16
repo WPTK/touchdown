@@ -15,6 +15,12 @@ It runs Atlanta (KATL), the busiest airport in the world, on real FAA airspace: 
 and real approaches, pulled straight from the FAA's own data. Then it does whatever it wants with them.
 
 **[Watch it run](https://wptk.github.io/touchdown/)** in your browser. No install, no clearance, no human in the loop.
+There's also a **[pitch deck](https://wptk.github.io/touchdown/deck.html)**, ten slides in S.E.A.N.'s own voice. The quotes in it
+are real, and the numbers come from a run of the sim (`node scripts/deck-numbers.mjs 1 4 40`).
+
+![The scope on Atlanta, with S.E.A.N.'s scoreboard next to the monitor's](docs/img/scope-atl.png)
+
+![The whole region: Atlanta Center, its neighbours and the hubs inside them](docs/img/scope-region.png)
 
 ## What does it do?
 
@@ -89,11 +95,19 @@ S.E.A.N. is reviewing that requirement, and so is the Relieve S.E.A.N. button.
 
 ## Wait, is any of this real?
 
-The airspace is, which is kind of the whole joke:
+The airspace is, which is kind of the whole joke. Everything here is from the FAA unless it says otherwise:
 
-- FAA CIFP (AIRAC cycle 2611) for KATL's runways, ILS approaches and its eight current arrival routes
-- FAA Order JO 7110.65BB and the AIM for every rule the monitor checks
-- Sources and research in [`docs/research/`](docs/research/)
+- **CIFP** (AIRAC cycle 2611) for the runways, ILS approaches and arrival routes at KATL and KCLT
+- **NASR** (28-day subscription, effective 2026-10-29) for the ARTCC boundaries and the tower and ATIS frequencies
+- **JO 7110.65BB** and the **AIM** (both effective 2026-07-09) for every rule the monitor checks. Each cited paragraph was
+  checked against faa.gov, and the log is in [`docs/research/faa-rules.md`](docs/research/faa-rules.md). JO 7110.65CC takes
+  effect 2026-12-24, and the monitor stays on BB until then
+- **Aircraft Characteristics Database** and **JO 7360.1K** for aircraft types, wake categories and approach speeds
+- **FAA commercial service enplanements** (CY2025) for which airports count as hubs
+- **METARs** from the Iowa Environmental Mesonet ASOS archive, and the TAF from aviationweather.gov
+- News, quotes and numbers from the sources linked in [`docs/research/atc-news-2026.md`](docs/research/atc-news-2026.md)
+
+The sources and retrieval dates are in [`docs/data.md`](docs/data.md) and [`docs/research/`](docs/research/).
 
 ```
 npm start      # then open http://127.0.0.1:8137/
