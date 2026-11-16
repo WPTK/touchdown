@@ -70,7 +70,7 @@ export function observe(m, sim) {
       const dh = Math.hypot(a.x - b.x, a.y - b.y);
       if (dh < cfg.latSepNm - EPS && dv < cfg.vertSepFt - EPS) {
         flag(
-          `sep:${a.id}:${b.id}`,
+          `sep:${Math.min(a.id, b.id)}:${Math.max(a.id, b.id)}`,
           PARA.SEP,
           'Separation minima lost',
           [a.id, b.id],
@@ -123,19 +123,22 @@ export function observe(m, sim) {
   // 5-7-1: speed assignments. Each order the controller issued is checked once.
   for (; m.orderCursor < sim.orders.length; m.orderCursor++) {
     const o = sim.orders[m.orderCursor];
+    // An order is judged on the state it was issued in; the aircraft may have moved on by now.
     const a = byId.get(o.id);
     if (!a) continue;
-    if (a.phase === 'hold') {
+    const phase = o.phase ?? a.phase;
+    const dist = o.dist ?? distToRunway(a);
+    if (phase === 'hold') {
       log(m, t, PARA.SPEED_ADJ, 'Speed adjustment in a holding pattern', [a.id], `${name(a)} told to fly ${Math.round(o.kt)} kt in the hold`);
     }
-    if (a.phase === 'inner' && distToRunway(a) < NO_SPEED_INSIDE_NM) {
+    if (phase === 'inner' && dist < NO_SPEED_INSIDE_NM) {
       log(
         m,
         t,
         PARA.SPEED_ADJ,
         'Speed adjustment inside the final approach fix',
         [a.id],
-        `${name(a)} told to fly ${Math.round(o.kt)} kt ${distToRunway(a).toFixed(1)} NM from the runway; none inside ${NO_SPEED_INSIDE_NM} NM`,
+        `${name(a)} told to fly ${Math.round(o.kt)} kt ${dist.toFixed(1)} NM from the runway; none inside ${NO_SPEED_INSIDE_NM} NM`,
       );
     }
     if (o.kt > (a.maxKt ?? Infinity) || o.kt < (a.minKt ?? 0)) {
