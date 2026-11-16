@@ -102,7 +102,7 @@ export function createSean(seed = 1) {
   const distRwy = toRunway;
 
   function issueSpeed(sim, a, kt, applies = true) {
-    sim.orders.push({ t: sim.t, id: a.id, kt, phase: a.phase, dist: distRwy(a) });
+    sim.orders.push({ t: sim.t, id: a.id, kt, phase: a.phase, dist: distRwy(a), alt: a.alt });
     if (applies) {
       a.innerKt = kt;
       a.speedKt = kt;

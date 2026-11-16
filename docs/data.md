@@ -208,8 +208,11 @@ controller does not fly go-arounds; S.E.A.N. does, and the monitor catches what 
 - 5-7-3: an assigned speed on a turbojet is at least 210 kt, or 170 kt inside 20 flying miles of the runway. A turboprop
   or piston is 200 kt, or 150 kt inside 20. Distance is the distance left on the route, not the straight line. At or
   above 10,000 ft the floor is 250 kt. Blimps are exempt; the text has no paragraph for an airship. All 22 fleet types are
-  turbojets, so the turboprop floor is checked by a planted aircraft in the tests.
+  turbojets, so the turboprop floor is checked by a planted aircraft in the tests. The altitude is the one on the order
+  when it was issued. The research table gives 250 kt from FL280 to 10,000 ft for every type, so the sim does too.
 - 14 CFR 91.117(a) and (c): 250 kt under 10,000 ft, and 200 kt in the airspace underlying a Class B area. The outline is
   the FAA's Class_Airspace layer for ATL (`scripts/classb.js` writes `data/classb-atl.json`: 15 areas, 260 vertices
   after a 0.1 NM simplification, in the same NM projection as the fixes). An aircraft is under a shelf when it is inside
   its outline and below the lowest floor there; a floor of 0 is the surface area, which is inside the Class B itself.
+  The sim's `speedKt` is groundspeed on final, not indicated airspeed, so a strong wind moves the 200 kt line by about one
+  wind component. S.E.A.N.'s own boost orders on final are judged by it too.

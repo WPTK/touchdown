@@ -58,11 +58,11 @@ const underlyingClassB = (a) => {
 };
 
 // 5-7-3 speed floors on an assigned speed, by what the aircraft is. Turbojets and turboprops only; there is no paragraph for an airship.
-export function minAssignedKt(a, distNm) {
+export function minAssignedKt(a, distNm, alt = a.alt) {
   if (a.kind === 'blimp') return 0;
   const jet = (a.engine ?? 'jet') === 'jet';
   const near = distNm < 20;
-  if (a.alt >= 10000) return 250; // FL280 to 10,000 ft
+  if (alt >= 10000) return 250; // FL280 to 10,000 ft
   return jet ? (near ? 170 : 210) : near ? 150 : 200;
 }
 
@@ -249,7 +249,7 @@ export function observe(m, sim) {
         `${name(a)} told to fly ${Math.round(o.kt)} kt ${dist.toFixed(1)} NM from the runway; none inside ${limit.toFixed(1)} NM`,
       );
     }
-    const floor = minAssignedKt(a, dist);
+    const floor = minAssignedKt(a, dist, o.alt ?? a.alt);
     if (a.kind !== 'blimp' && (phase === 'inner' || phase === 'transit') && o.kt < floor) {
       log(m, t, PARA.SPEED_MIN, 'Assigned speed under the 5-7-3 minimum', [a.id], `${name(a)} told to fly ${Math.round(o.kt)} kt; ${floor} kt is the least for this aircraft ${dist.toFixed(0)} NM from the runway`);
     }
