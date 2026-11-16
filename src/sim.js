@@ -50,7 +50,8 @@ export const CONFIG = Object.freeze({
   fuelMaxS: 150 * 60,
 });
 
-const AIRLINES = ['AAL', 'DAL', 'UAL', 'SWA', 'JBU', 'ASA', 'RPA', 'SKW', 'FFT', 'NKS'];
+// Fictional carriers. S.E.A.N. traffic never uses a real airline's callsign (#3).
+const AIRLINES = ['PEACH', 'GRITS', 'KUDZU', 'PECAN', 'OKRA'];
 
 // ---- routes --------------------------------------------------------------------------------------------------------
 
