@@ -195,3 +195,8 @@ Capacity. One aircraft leaves a hold fix per step-down: 1,000 ft at 520 fpm is 1
 hold and the probe's waits bring the sustained rate to about 25 an hour (23.6 to 27.2 over six seeds at overload). The
 three runways do not raise it; the level stack is the limit. Demand above that waits upstream, so the oracle sweeps at
 12, 24 and 45 an hour with 20 seeds each, west and east, all show zero violations. Nothing is capped.
+
+Not covered. A go-around climbs out to the missed approach fix and back to its hold fix at the end of the queue. The probe
+only watches released (inner) aircraft, so a go-around climbing through the stack, or across a final, is not checked
+against them, and the aircraft is not released from the hold fix until it has climbed to the base level. The safe
+controller does not fly go-arounds; S.E.A.N. does, and the monitor catches what comes of it.

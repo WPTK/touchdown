@@ -23,6 +23,7 @@ import { lostSeparation, pairMargin } from './separation.js';
 const KT = 1 / 3600; // NM per second, per knot
 const EPS = 1e-6;
 const PROBE_DT = 3; // s between samples of a predicted flight
+const PROBE_MAX_S = 7200; // a flight that has not reached the runway after two hours is not releasable
 const PROBE_MARGIN_NM = 0.3;
 const PROBE_MARGIN_FT = 150;
 const SCAN_S = 1200; // how far ahead the controller looks for a release time
@@ -318,7 +319,7 @@ function stateAt(sim, a, t) {
 // Would an aircraft released at tr on `route` keep separation from everyone already released, for its whole flight?
 function clear(sim, cand, tr) {
   const others = sim.aircraft.filter((o) => o.phase === 'inner');
-  for (let t = tr; ; t += PROBE_DT) {
+  for (let t = tr; t < tr + PROBE_MAX_S; t += PROBE_DT) {
     const c = stateAt(sim, cand, t);
     if (!c) return true;
     for (const o of others) {
@@ -334,6 +335,7 @@ function clear(sim, cand, tr) {
       }
     }
   }
+  return false; // never reached the runway inside the cap (a speed of zero): not releasable
 }
 
 function candidate(sim, a, rw, tr) {
@@ -353,7 +355,8 @@ function feasible(sim, a, t) {
 // The runway the head is released to if it may leave at t, or null.
 function canDepart(sim, a, t) {
   if (sim.queue[0] !== a) return null;
-  if (outerAlt(sim, a, t) > sim.cfg.baseLevelFt + EPS) return null;
+  // At the base level exactly: a go-around still climbing to it is not released at an altitude it has not reached.
+  if (Math.abs(outerAlt(sim, a, t) - sim.cfg.baseLevelFt) > EPS) return null;
   if (t < sim.lastDepartT + sim.cfg.spacingS / sim.wx.rateMult - EPS) return null;
   return feasible(sim, a, t)[0] ?? null;
 }
@@ -381,9 +384,9 @@ function depart(sim, a, t, rwy) {
 
 // Earliest time the head may leave its hold fix: the step-down done, the release spacing passed, and a runway clear.
 function readyTime(sim, a) {
-  const key = `${sim.departures.length}:${sim.orders.length}:${sim.flow}:${sim.cfg.spacingS}`;
+  const key = `${sim.departures.length}:${sim.orders.length}:${sim.aircraft.length}:${sim.flow}:${sim.cfg.spacingS}`;
   if (a.readyKey === key) return a.readyT;
-  const settle = a.stepStartT + Math.max(0, a.fromAlt - sim.cfg.baseLevelFt) / (sim.cfg.stepRateFpm / 60);
+  const settle = a.stepStartT + Math.abs(a.fromAlt - sim.cfg.baseLevelFt) / (sim.cfg.stepRateFpm / 60);
   const from = Math.max(sim.t, settle, sim.lastDepartT + sim.cfg.spacingS / sim.wx.rateMult);
   let t = from;
   while (t < from + SCAN_S && !feasible(sim, a, t).length) t += PROBE_DT;
