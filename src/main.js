@@ -78,7 +78,7 @@ function updatePanel() {
     const li = document.createElement(tag);
     if (cls) li.className = cls;
     const tm = document.createElement('time');
-    tm.textContent = hms(time).slice(3);
+    tm.textContent = time >= 3600 ? hms(time) : hms(time).slice(3);
     li.append(tm, ...parts);
     return li;
   };
