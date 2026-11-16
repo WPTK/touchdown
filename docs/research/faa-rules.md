@@ -37,7 +37,7 @@ Every 7110.65 and AIM paragraph that `src/` or `docs/` cites. URLs are
 | 2-6-4 | Issuing weather and chaff areas | weather | confirmed |
 | 2-9-1 | Application | atis | confirmed: letters sequential, Alpha to Zulu, repeated |
 | 2-9-2 | Operating procedures | atis, monitor ATIS | confirmed |
-| 3-1-8 | Low level wind shear/microburst advisories | weather | confirmed: "A statement must be included on the ATIS for 20 minutes following the last report or indication" |
+| 3-1-8 | Low level wind shear/microburst advisories | weather | confirmed: "A statement must be included on the ATIS for 20 minutes following the last report or indication"; without ATIS, broadcast for 20 minutes after the last report |
 | 3-5-1 | Selection | sean, weather, monitor RWY | confirmed: most nearly aligned with the wind at 5 knots or more, calm-wind runway under 5 |
 | 3-5-3 | Tailwind components | weather | confirmed: state wind direction and velocity |
 | 3-10-3 | Same runway separation | docs | confirmed |
@@ -46,7 +46,7 @@ Every 7110.65 and AIM paragraph that `src/` or `docs/` cites. URLs are
 | 4-5-2 | Flight direction | enroute | confirmed: courses 0 to 179 odd cardinal levels at 2,000 ft, 180 to 359 even |
 | 4-5-7 | Altitude information | phrase | confirmed: "CLIMB/DESCEND AND MAINTAIN (altitude)." |
 | 4-6-1 | Clearance to holding fix | phrase | confirmed, incl. EFC, and "Do not specify this item if no delay is expected" |
-| 4-6-4 | Holding instructions | phrase | confirmed: "HOLD (direction) OF (fix/waypoint) ON (...)", "(number of minutes/miles) MINUTE/MILE LEG", turn direction only for left turns |
+| 4-6-4 | Holding instructions | phrase | confirmed: "HOLD (direction) OF (fix/waypoint) ON (...)", "(number of minutes/miles) MINUTE/MILE LEG", turn direction only if left turns are to be made, the pilot requests it, or the controller considers it necessary |
 | 4-8-1 | Approach clearance | phrase | confirmed: "CLEARED (type) APPROACH." |
 | 5-5-4 | Minima | monitor SEP, WAKE, fleet | confirmed, one difference below |
 | 5-5-5 | Vertical application | monitor ALT | confirmed: assign an altitude "after the aircraft previously at that altitude has been issued a climb/descent clearance and is observed (valid Mode C), or reports leaving the altitude" (b) |
@@ -59,7 +59,7 @@ Every 7110.65 and AIM paragraph that `src/` or `docs/` cites. URLs are
 | 5-9-6 | Simultaneous dependent approaches | separation | confirmed; bands are inclusive at the top, see below |
 | 5-9-7 | Simultaneous independent approaches, dual and triple | separation | confirmed; sim uses one spacing threshold, see below |
 | 5-9-8 | PRM approaches | separation, airspace | confirmed: PRM assigned when centerlines are under 4,300 ft |
-| 5-9-10 | Simultaneous independent approaches to widely spaced parallel runways without final monitors | separation | confirmed |
+| 5-9-10 | Simultaneous independent approaches to widely spaced parallel runways without final monitors | separation | confirmed; the 9,000 ft figure holds for field elevations at or below 5,000 ft MSL, 9,200 ft above that (no KATL or KCLT pair is near it) |
 | 9-8-1 | UAP general | monitor UAP | confirmed: "Inform the operations supervisor/CIC of any reported or observed unidentified anomalous phenomena (UAP)" |
 | AIM 5-3-8 | Holding | docs | confirmed: 200 KIAS to 6,000 MSL, 230 from 6,001 to 14,000 (a 210 restriction is allowed), 265 above 14,000; inbound leg 1 minute to 14,000 MSL, 1.5 above |
 | AIM 7-1-7 | Categorical ceiling and visibility | weather | confirmed: LIFR under 500 ft or 1 mile, IFR 500 to under 1,000 or 1 to under 3, MVFR 1,000 to 3,000 or 3 to 5 |
@@ -110,8 +110,8 @@ Not published yet. The FAA's publication schedule lists CC for 2026-12-24 and sa
 days before they take effect, which is about 2026-11-24. The monitor stays on BB until after 2026-12-24. When CC is
 up, diff it against the BB copies here.
 
-What is known now: seven notices amend 7110.65 and cancel on 2026-12-24 (the date they fold into CC). These are the
-cited paragraphs they touch:
+What is known now: seven notices and GENOTs amend 7110.65. Six cancel on 2026-12-24, the date they fold into CC;
+N JO 7110.807 cancels 2027-06-10. These are the cited paragraphs they touch:
 
 | Notice | Effective | Cited paragraph affected |
 |---|---|---|
