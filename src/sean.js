@@ -5,13 +5,16 @@
 // Hooks into sim.js: beforeStep, afterStep, onSpawn, onDepart.
 
 import { mulberry32 } from './rng.js';
-import { FAF, outerAlt } from './sim.js';
+import { goAround as simGoAround, outerAlt, replan, toRunway } from './sim.js';
+import { makePath } from './airspace.js';
+import { PARA } from './monitor.js';
 import { hasLine, pick, refusal } from './comms.js';
 import { PLACES, DIVERT_TO } from './places.js';
 import { pickFlow, weatherTick } from './wx-sean.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
+const GAAS_NM = 10; // GaaS counts the aircraft inside this distance of the runway
 const FEED_MAX = 1000; // the panel shows 12; the rest is for the tests
 
 const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
@@ -44,6 +47,9 @@ export function createSean(seed = 1) {
   const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
   const fexpo = (meanS) => -Math.log(1 - frng()) * meanS;
   let baseSpacingS = null;
+  let monitor = null; // the conformance monitor: the one place a loss of separation is decided
+  // The losses S.E.A.N. can see: the monitor's separation entries, from index i on.
+  const lossesFrom = (i) => (monitor ? monitor.violations.slice(i).filter((v) => v.para === PARA.SEP) : []);
   const sean = {
     feed: [], // { t, kind, text }, newest last
     credit: 0, // landings S.E.A.N. has taken credit for
@@ -53,8 +59,8 @@ export function createSean(seed = 1) {
     elsewhereSeen: 0,
     nextOutageT: 1500 + fexpo(2.5 * HOUR),
     billed: 0, // separation losses S.E.A.N. has invoiced as down payments
-    lossCursor: 0,
-    lossLast: new Map(), // callsign pair -> last tick that pair was in breach
+    lossCursor: 0, // index into the monitor's log: what has been billed
+    blameCursor: 0, // and what has been blamed
     shutdown: { on: false, startT: 0, stage: -1, acc: 0, requestedSeen: 0 },
     cutTotal: 0,
     nextFloppyT: 900 + fexpo(1.5 * HOUR),
@@ -66,7 +72,6 @@ export function createSean(seed = 1) {
     blimpsSent: 0,
     ufosSeen: 0,
     landedSeen: 0,
-    lossSeen: 0,
     lastBlameT: -Infinity,
     nextBlimpT: 600 + expo(3 * HOUR),
     nextUfoT: 600 + expo(2 * HOUR),
@@ -92,12 +97,12 @@ export function createSean(seed = 1) {
   };
   const line = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, rng);
   const lineF = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, frng);
-  const fixName = (sim, a) => sim.geo.feeders[a.feeder].name;
-  const onFinal = (sim, a) => a.phase === 'inner' && a.s > sim.geo.feeders[a.feeder].l1;
-  const distRwy = (a) => Math.hypot(a.x, a.y);
+  const fixName = (sim, a) => a.fix;
+  const onFinal = (sim, a) => a.phase === 'inner' && a.s >= a.route.finalStartS; // established on the final approach course
+  const distRwy = toRunway;
 
   function issueSpeed(sim, a, kt, applies = true) {
-    sim.orders.push({ t: sim.t, id: a.id, kt, phase: a.phase, dist: distRwy(a) });
+    sim.orders.push({ t: sim.t, id: a.id, kt, phase: a.phase, dist: distRwy(a), alt: a.alt });
     if (applies) {
       a.innerKt = kt;
       a.speedKt = kt;
@@ -105,17 +110,10 @@ export function createSean(seed = 1) {
   }
 
   function goAround(sim, a) {
-    const { cfg } = sim;
-    a.phase = 'transit';
-    a.s = 0;
+    simGoAround(sim, a);
     a.goArounds = (a.goArounds || 0) + 1;
-    a.fromAlt = a.alt;
-    a.targetAlt = cfg.baseLevelFt + cfg.levelStepFt * sim.queue.length;
-    a.stepStartT = sim.t;
     a.innerKt = undefined;
     a.boostAt = undefined;
-    a.speedKt = cfg.transitSpeedKt;
-    sim.queue.push(a);
     sean.goArounds++;
     line(sim, 'tx', 'gaasTx', { cs: a.callsign });
     line(sim, 'brag', 'gaas', { cs: a.callsign, n: sean.goArounds });
@@ -131,6 +129,7 @@ export function createSean(seed = 1) {
       b.targetAlt = Math.max(cfg.baseLevelFt, b.targetAlt - cfg.levelStepFt);
     }
     sim.aircraft = sim.aircraft.filter((x) => x !== a);
+    replan(sim); // the new head's laps are timed to its own clearance
     return a;
   }
 
@@ -172,7 +171,7 @@ export function createSean(seed = 1) {
     };
     sim.anomalies.push(u);
     sean.ufosSeen++;
-    const fix = u.y >= 0 ? sim.geo.feeders[0].name : sim.geo.feeders[1].name;
+    const fix = Object.values(sim.geo.stars).reduce((p, st) => (Math.hypot(st.hold.x - u.x, st.hold.y - u.y) < Math.hypot(p.hold.x - u.x, p.hold.y - u.y) ? st : p)).hold.id; // the hold fix nearest the target
     line(sim, 'tx', 'ufoTx', { fix, sq: u.squawk, n: sim.queue.length + 1 });
     line(sim, 'brag', 'ufo');
   }
@@ -211,6 +210,9 @@ export function createSean(seed = 1) {
 
   const ctl = {
     sean,
+    attachMonitor(m) {
+      monitor = m;
+    },
 
     // Lets the UI add a line to the feed (an unlocked achievement).
     announce(sim, kind, text) {
@@ -265,15 +267,12 @@ export function createSean(seed = 1) {
 
       // The meter: every separation loss is another down payment. S.E.A.N. cannot see one while the scope is dark.
       if (!dark) {
-        for (; sean.lossCursor < sim.losses.length; sean.lossCursor++) {
-          const l = sim.losses[sean.lossCursor];
-          const key = [l.a, l.b].sort().join('|');
-          const last = sean.lossLast.get(key);
-          sean.lossLast.set(key, l.t);
-          if (last !== undefined && l.t - last <= 1.5) continue;
+        for (const l of lossesFrom(sean.lossCursor)) {
           sean.billed++;
-          lineF(sim, 'blame', 'bill', { a: l.a, b: l.b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
+          const [a, b] = l.names;
+          lineF(sim, 'blame', 'bill', { a, b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
         }
+        if (monitor) sean.lossCursor = monitor.violations.length;
       }
 
       // Shutdown mode: the cuts are made by deleting aircraft off the scope. Each cut counts as on time.
@@ -346,16 +345,17 @@ export function createSean(seed = 1) {
       }
 
       // S.E.A.N. cannot see a loss while the scope is dark, so the blame waits for the picture too.
-      if (sim.losses.length > sean.lossSeen && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
-        sean.lossSeen = sim.losses.length;
+      const fresh = lossesFrom(sean.blameCursor);
+      if (fresh.length && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
+        sean.blameCursor = monitor.violations.length;
         if (t - sean.lastBlameT > 90) {
           sean.lastBlameT = t;
-          const l = sim.losses.at(-1);
-          line(sim, 'blame', 'blame', { a: l.a, b: l.b });
+          const [a, b] = fresh.at(-1).names;
+          line(sim, 'blame', 'blame', { a, b });
         }
       }
 
-      if (t >= sean.nextBlimpT && !sim.upstream.some((r) => r.kind) && !sim.aircraft.some((a) => a.kind === 'blimp')) {
+      if (t >= sean.nextBlimpT && !sim.draining && !sim.upstream.some((r) => r.kind) && !sim.aircraft.some((a) => a.kind === 'blimp')) {
         sean.nextBlimpT = t + expo(3 * HOUR);
         sean.blimpsSent++;
         sim.upstream.push({ requestT: t, callsign: `ZPL${sean.blimpsSent}`, kind: 'blimp' });
@@ -381,6 +381,7 @@ export function createSean(seed = 1) {
       // A holding head is released early: tighter spacing than the last departure was given.
       if (q0 && q0.phase === 'hold' && cfg.spacingS > 50 && rng() < 0.004 * dt) {
         cfg.spacingS = 50;
+        replan(sim);
         line(sim, 'tx', 'holdCutTx', { cs: q0.callsign });
         line(sim, 'brag', 'holdCut', { fix: fixName(sim, q0) });
       }
@@ -426,7 +427,7 @@ export function createSean(seed = 1) {
       }
 
       // GaaS: when the final is crowded, the last one in line gets a go-around.
-      const final = sim.aircraft.filter((a) => onFinal(sim, a) && distRwy(a) < FAF.x && a.kind !== 'blimp');
+      const final = sim.aircraft.filter((a) => onFinal(sim, a) && distRwy(a) < GAAS_NM && a.kind !== 'blimp');
       if (final.length >= 3 && rng() < 0.03 * dt) {
         const last = final.reduce((p, a) => (distRwy(a) > distRwy(p) ? a : p));
         if ((last.goArounds || 0) < 2 && queue.length < cfg.maxQueue) goAround(sim, last);
@@ -459,16 +460,17 @@ export function createSean(seed = 1) {
 
     onSpawn(sim, a, req) {
       if (req.kind !== 'blimp') return;
-      const f = sim.geo.feeders[Math.floor(rng() * 2)];
+      const h = sim.geo.stars[a.star].hold;
       const bearing = rng() * 2 * Math.PI;
       Object.assign(a, {
         kind: 'blimp',
         type: 'AIRSHIP',
         finalKt: BLIMP_KT,
         apchCat: 'A',
-        feeder: sim.geo.feeders.indexOf(f),
-        x: f.x + 7 * Math.sin(bearing),
-        y: f.y + 7 * Math.cos(bearing),
+        x: h.x + 7 * Math.sin(bearing), // 7 NM out from its hold fix
+        y: h.y + 7 * Math.cos(bearing),
+        outer: makePath([{ x: h.x + 7 * Math.sin(bearing), y: h.y + 7 * Math.cos(bearing) }, h]),
+        so: 0,
         wake: 'I',
         transitKt: BLIMP_KT,
         transitMinKt: BLIMP_KT,
@@ -493,11 +495,12 @@ export function createSean(seed = 1) {
           b.targetAlt += sim.cfg.levelStepFt;
         }
       }
-      const s = SPACINGS[Math.floor(rng() * SPACINGS.length)] * (baseSpacingS / 120);
+      const raw = SPACINGS[Math.floor(rng() * SPACINGS.length)];
+      const s = raw * (baseSpacingS / 120);
       sim.cfg.stepRateFpm = STEP_RATES[Math.floor(rng() * STEP_RATES.length)];
-      if (s < 120 && sim.queue[0]) {
+      if (raw < 120 && sim.queue[0]) {
         sim.cfg.spacingS = s;
-        const vars = { cs: sim.queue[0].callsign, s, n: 1, pct: Math.round((120 / s - 1) * 100) };
+        const vars = { cs: sim.queue[0].callsign, s, n: 1, pct: Math.round((baseSpacingS / s - 1) * 100) };
         line(sim, 'tx', 'spacingTx', vars);
         line(sim, 'brag', 'spacing', vars);
       } else {
