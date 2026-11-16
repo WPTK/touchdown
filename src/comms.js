@@ -50,13 +50,13 @@ const LINES = {
     'The monitor logged ${a} and ${b} again. The monitor is a legacy human.',
   ],
   blimp: [
-    'Airship added to the arrival stream. Jets and a zeppelin, same line. Inclusion.',
+    'Airship added to the arrival stream. Jets and a zeppelin, same line.',
     '${cs} is a 35 kt arrival and I have given it a number.',
   ],
   blimpTx: ['${cs}, welcome. You are number ${n} for 27. Maintain 35 knots, which is the only thing you can do.'],
   blimpSpeedTx: ['${cs}, increase speed to ${kt}.'],
   blimpSpeed: ['${cs} is declining my speed instruction. I call that low-key compliance.'],
-  blimpWin: ['Everything behind ${cs} is closing at 125 kt. That is a capacity win.'],
+  blimpWin: ['Everything behind ${cs} is closing fast. That is a capacity win.'],
   ufoTx: ['Unidentified target near ${fix}. Assigned squawk ${sq}, runway 27, slot #${n}. It has not responded.'],
   ufo: [
     'Unknown target sequenced. Nothing is unknown to me, only unlogged.',

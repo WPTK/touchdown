@@ -1,6 +1,6 @@
 // S.E.A.N., the Superintelligent Enroute Arrival Navigator. It takes the safe sequencer's plan and improves it.
-// Everything is seeded: same seed, same mess. It uses its own random stream, so the traffic it gets is the
-// traffic the safe controller would get. The only difference is what it does with it.
+// Everything is seeded: same seed, same mess. It uses its own random stream. A blimp does draw from the sim's
+// stream when it spawns, so arrivals after the first blimp differ from the safe controller's.
 //
 // Hooks into sim.js: beforeStep, afterStep, onSpawn, onDepart.
 
@@ -20,6 +20,7 @@ export const BLIMP_KT = 35;
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
+  let baseSpacingS = null;
   const sean = {
     feed: [], // { t, kind, text }, newest last
     credit: 0, // landings S.E.A.N. has taken credit for
@@ -47,7 +48,7 @@ export function createSean(seed = 1) {
   const distRwy = (a) => Math.hypot(a.x, a.y);
 
   function issueSpeed(sim, a, kt, applies = true) {
-    sim.orders.push({ t: sim.t, id: a.id, kt });
+    sim.orders.push({ t: sim.t, id: a.id, kt, phase: a.phase, dist: distRwy(a) });
     if (applies) {
       a.innerKt = kt;
       a.speedKt = kt;
@@ -262,6 +263,9 @@ export function createSean(seed = 1) {
       const bearing = rng() * 2 * Math.PI;
       Object.assign(a, {
         kind: 'blimp',
+        type: 'AIRSHIP',
+        finalKt: BLIMP_KT,
+        apchCat: 'A',
         feeder: sim.geo.feeders.indexOf(f),
         x: f.x + 7 * Math.sin(bearing),
         y: f.y + 7 * Math.cos(bearing),
@@ -282,13 +286,14 @@ export function createSean(seed = 1) {
 
     // Every departure, S.E.A.N. re-optimizes the spacing and how fast the stack comes down.
     onDepart(sim, a) {
+      baseSpacingS ??= sim.cfg.spacingS;
       for (const b of sim.queue) {
         if (b.preStepped) {
           b.preStepped = false;
           b.targetAlt += sim.cfg.levelStepFt;
         }
       }
-      const s = SPACINGS[Math.floor(rng() * SPACINGS.length)];
+      const s = SPACINGS[Math.floor(rng() * SPACINGS.length)] * (baseSpacingS / 120);
       sim.cfg.stepRateFpm = STEP_RATES[Math.floor(rng() * STEP_RATES.length)];
       if (s < 120 && sim.queue[0]) {
         sim.cfg.spacingS = s;
@@ -296,7 +301,7 @@ export function createSean(seed = 1) {
         line(sim, 'tx', 'spacingTx', vars);
         line(sim, 'brag', 'spacing', vars);
       } else {
-        sim.cfg.spacingS = 120;
+        sim.cfg.spacingS = baseSpacingS;
       }
     },
   };

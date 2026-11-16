@@ -37,7 +37,7 @@ test('S.E.A.N. does not crash or stall: everything lands or is diverted, 20 seed
     const { sim, sean } = run(seed, 4, seed % 2 ? 24 : 45);
     assert.equal(drain(sim), true, `seed ${seed}: traffic left after drain`);
     assert.ok(sean.credit > 0, `seed ${seed}: no landings`);
-    assert.ok(sim.landed.length + sean.diverted.length >= sim.requested - 0, `seed ${seed}: aircraft lost`);
+    assert.ok(sim.landed.length + sean.diverted.length === sim.requested, `seed ${seed}: aircraft lost`);
   }
 });
 
