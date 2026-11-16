@@ -23,7 +23,7 @@ import { lostSeparation, pairMargin } from './separation.js';
 const KT = 1 / 3600; // NM per second, per knot
 const EPS = 1e-6;
 const PROBE_DT = 3; // s between samples of a predicted flight
-const PROBE_MAX_S = 7200; // a flight that has not reached the runway after two hours is not releasable
+const PROBE_MAX_S = 6 * 3600; // a flight that has not reached the runway after six hours (a blimp at 35 kt takes about 2.5) is not releasable
 const PROBE_MARGIN_NM = 0.3;
 const PROBE_MARGIN_FT = 150;
 const SCAN_S = 1200; // how far ahead the controller looks for a release time
@@ -355,8 +355,10 @@ function feasible(sim, a, t) {
 // The runway the head is released to if it may leave at t, or null.
 function canDepart(sim, a, t) {
   if (sim.queue[0] !== a) return null;
-  // At the base level exactly: a go-around still climbing to it is not released at an altitude it has not reached.
-  if (Math.abs(outerAlt(sim, a, t) - sim.cfg.baseLevelFt) > EPS) return null;
+  // Not above the base level, and not still climbing to it (a go-around is not released at an altitude it has not reached).
+  const alt = outerAlt(sim, a, t);
+  if (alt > sim.cfg.baseLevelFt + EPS) return null;
+  if (alt < sim.cfg.baseLevelFt - EPS && a.targetAlt >= sim.cfg.baseLevelFt - EPS) return null;
   if (t < sim.lastDepartT + sim.cfg.spacingS / sim.wx.rateMult - EPS) return null;
   return feasible(sim, a, t)[0] ?? null;
 }
