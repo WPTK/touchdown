@@ -154,7 +154,9 @@ export function createSean(seed = 1) {
   const hhmm = (sim) => zulu(sim.weather?.metars[0] ?? DEFAULT_BASE, sim.t).slice(2, 6);
 
   // A new recording when new weather arrives (changed or not), the runway changes, an advisory starts or a PIREP comes in.
+  // KATL only: the frequencies and the flows it reads come from the FAA's Atlanta data.
   function atisTick(sim) {
+    if (sim.airport !== 'KATL') return;
     const a = sean.atis;
     const st = sean.wx;
     const wx = sim.wx;
@@ -584,7 +586,7 @@ export function createSean(seed = 1) {
           const faf = a.route.path.verts.find((v) => v.role === 'faf');
           lineC(sim, 'tx', 'approachTx', { cs: a.callsign, fix: faf?.id, rwy: a.rwy });
         }
-        if (onFinal(sim, a) && a.apchTold && !a.handedOff && distRwy(a) < 8) handoff(sim, a);
+        if (sim.airport === 'KATL' && onFinal(sim, a) && a.apchTold && !a.handedOff && distRwy(a) < 8) handoff(sim, a);
         if (onFinal(sim, a) && a.apchTold && !a.landTold && !a.landOdd && distRwy(a) < 4) {
           a.landTold = true;
           lineC(sim, 'tx', 'landClrTx', { cs: a.callsign, rwy: a.rwy });
