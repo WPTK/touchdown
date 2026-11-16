@@ -274,7 +274,7 @@ export function buildAirport(allLines, airportIdent) {
 
   const runways = sub('G').map((l) => {
     const r = parseRunway(l);
-    return place({ ...r, trueBearingDeg: round(r.magneticBearingDeg + magVar, 1) });
+    return place({ ...r, trueBearingDeg: ((round(r.magneticBearingDeg + magVar, 1) % 360) + 360) % 360 });
   });
   const localizers = sub('I').map(parseLocalizer);
 

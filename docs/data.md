@@ -216,3 +216,49 @@ controller does not fly go-arounds; S.E.A.N. does, and the monitor catches what 
   its outline and below the lowest floor there; a floor of 0 is the surface area, which is inside the Class B itself.
   The sim's `speedKt` is groundspeed on final, not indicated airspeed, so a strong wind moves the 200 kt line by about one
   wind component. S.E.A.N.'s own boost orders on final are judged by it too.
+
+## The region: KCLT, ARTCC boundaries and which airports are where (`data/kclt-2611.json`, `data/artcc-2611.json`, `data/region-2611.json`)
+
+`scripts/cifp.js` takes any airport ident, so the second hub is the same pipeline as KATL:
+
+```
+node scripts/cifp.js data/raw/FAACIFP18 KCLT      # writes data/kclt-2611.json
+```
+
+KATL regenerates byte for byte after the change (the one edit: a runway's true bearing is now taken modulo 360, which
+only matters where magnetic bearing plus variation goes below zero, as at KCLT: 003 magnetic, 7 degrees west, is 356
+true and not -4). KCLT has 6 runways, 6 ILS, 12 STARs and 206 fixes, 0 unresolved.
+
+### ARTCC boundaries (`scripts/artcc.js`)
+
+| | |
+|---|---|
+| File | `ARB.txt` inside `ARB.zip`, FAA NASR 28-day subscription, effective 2026-10-29 (the same cycle as the CIFP) |
+| URL | <https://nfdc.faa.gov/webContent/28DaySub/2026-10-29/ARB.zip>, layout in `Layout_Data/arb_rf.txt` on the same path. The subscription page is <https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/2026-10-29>. `aeronav.faa.gov` does not host the NASR files; `nfdc.faa.gov` does, and a plain `curl` with a browser user agent works |
+| Licence | US government work, public domain. Raw files stay in `data/raw/` (ignored) |
+| Kept | ZTL, ZJX, ZME, ZDC and ZID, the high structure (`*H*`). The low structure is not carried |
+
+Every segment of the five centres is a straight line to the next point (`TO`), and a shape closes at `TO POINT OF
+BEGINNING`. Nothing is an arc or a circle, so nothing is approximated. Each of the five is one shape in the high structure (ZTL has 34 points). The five centres come to 191 points and 12 KB, so the boundaries are
+not simplified: the file carries the FAA's own vertices, latitude and longitude plus the same NM projection as
+`katl-2611.json` (east and north of the KATL airport reference point). That one frame is the regional frame.
+
+### Which airports are inside which centre (`scripts/region.js`)
+
+The hub class is the FAA's own, from the CY2025 commercial service enplanements workbook (`data/hubs-cy2025.json`: the
+large, medium and small hubs, with the source URL). Each airport's position and longest runway are from its CIFP
+airport reference record, and the centre is a point-in-polygon test against the ARB shapes.
+
+Large hubs inside ZTL: **KATL and KCLT, and no others.** BNA is in ZME, TPA in ZJX, and RDU, IAD, DCA, BWI and PHL are in
+ZDC. A third large airport does not fit, so the full arrival flows are KATL and KCLT. Small hubs inside ZTL (there is no medium hub), with
+KPDK (a general aviation reliever, kept because Atlanta's alternates already use it): TYS, BHM, GSP, AVL, GSO, HSV, CHA.
+`data/region-2611.json` lists every hub in the five centres with its centre.
+
+```
+node scripts/artcc.js data/raw/nasr-261029/arb/ARB.txt data/raw/FAACIFP18   # writes data/artcc-2611.json
+node scripts/region.js data/raw/FAACIFP18                                   # writes data/region-2611.json
+```
+
+The ARB parser stops if a segment is not a plain straight line, so a later cycle with an arc cannot slip in as a chord. The
+segments are straight in the KATL projection; the FAA draws them as lines on the ground, and at 600 NM from KATL the
+difference could move an edge by a fraction of a mile, which matters only for an airport sitting on a boundary.
