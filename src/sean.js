@@ -9,7 +9,6 @@ import { goAround as simGoAround, outerAlt, replan, toRunway } from './sim.js';
 import { makePath } from './airspace.js';
 import { PARA } from './monitor.js';
 import { hasLine, pick, refusal } from './comms.js';
-import { PLACES, DIVERT_TO } from './places.js';
 import { pickFlow, weatherTick } from './wx-sean.js';
 
 const KT = 1 / 3600;
@@ -135,7 +134,7 @@ export function createSean(seed = 1) {
 
   // The aircraft leaves the scope and lands at `ident` after the flight time. S.E.A.N. counts the landing.
   function sendElsewhere(sim, a, ident, key) {
-    const p = PLACES[ident];
+    const p = sim.ap.places[ident];
     const flightS = Math.max(120, Math.round((p.distNm / 200) * 3600));
     sean.enroute.push({ callsign: a.callsign, ident, requestT: a.requestT, landT: sim.t + flightS });
     sean.diverted.push({ t: sim.t, callsign: a.callsign, ident });
@@ -150,7 +149,7 @@ export function createSean(seed = 1) {
     if (!cands.length) return;
     const i = cands[Math.floor(rng() * cands.length)];
     let r = frng();
-    const ident = (DIVERT_TO.find(([, w]) => (r -= w) < 0) ?? DIVERT_TO[0])[0];
+    const ident = (sim.ap.divertTo.find(([, w]) => (r -= w) < 0) ?? sim.ap.divertTo[0])[0];
     sendElsewhere(sim, pull(sim, i), ident, 'divert');
   }
 
@@ -334,7 +333,7 @@ export function createSean(seed = 1) {
       for (; sean.elsewhereSeen < sim.elsewhere.length; sean.elsewhereSeen++) {
         sean.credit++;
         const l = sim.elsewhere[sean.elsewhereSeen];
-        const p = PLACES[l.ident];
+        const p = sim.ap.places[l.ident];
         lineF(sim, 'brag', 'landingElsewhere', { cs: l.callsign, n: sean.credit, where: p.short, nm: Math.round(p.distNm) });
       }
 

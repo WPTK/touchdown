@@ -262,3 +262,19 @@ node scripts/region.js data/raw/FAACIFP18                                   # wr
 The ARB parser stops if a segment is not a plain straight line, so a later cycle with an arc cannot slip in as a chord. The
 segments are straight in the KATL projection; the FAA draws them as lines on the ground, and at 600 NM from KATL the
 difference could move an edge by a fraction of a mile, which matters only for an airport sitting on a boundary.
+
+## A second hub: KCLT (`src/airports.js`)
+
+`makeAirspace(data)` in `src/airspace.js` builds one airport's geometry from its CIFP file, and `createSim({ airport })`
+flies it. KATL and KCLT are each their own sim on their own projection, so the oracle and the monitor are the same code at
+both. Flows are derived from the data: ILS runways grouped by landing direction. KCLT gets `north` (01L, 01R, 36) and
+`south` (18, 19L, 19R). Weather stays KATL-only. Class B for KCLT comes from `node scripts/classb.js CLT data/kclt-2611.json data/classb-clt.json`.
+
+Base level. BANKR8 and PARQR7 say "at 12,000" 20 to 26 NM past their first fix, so a 12,000 ft base fails
+`releasedClearsStack`. KCLT's base level is 13,000 ft (`config.baseLevelFt`). 14,000 also passes, 15,000 fails
+`routesReachAltitudes`.
+
+Capacity. The same level stack (1,000 ft per 115 s) would allow 31 an hour. KCLT lands **about 17 an hour sustained: 14.0
+to 20.3 over 12 runs at overload (6 seeds, both flows), mean 16.9**, below KATL's 25. The routes are longer and arrivals wait on
+the probe; I did not break the gap down further. The oracle sweeps at 12, 24 and 45 an hour, both flows, seeds 1
+to 3 (`test/airports.test.js`), all with zero violations.

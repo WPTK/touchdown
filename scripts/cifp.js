@@ -9,7 +9,8 @@ import { readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const EARTH_RADIUS_NM = 6371.0088 / 1.852; // IUGG mean radius in km / 1.852 km per NM
+import { EARTH_RADIUS_NM, makeProjection } from '../src/geo.js';
+export { EARTH_RADIUS_NM, makeProjection };
 
 const col = (line, from, to = from) => line.substring(from - 1, to);
 const txt = (line, from, to = from) => col(line, from, to).trim();
@@ -53,25 +54,6 @@ const ALTITUDE_CONSTRAINT = { ' ': 'at', '+': 'atOrAbove', '-': 'atOrBelow', B: 
 // ARINC 5.17 waypoint description code, position 4 (column 43): A initial approach fix, F final approach fix,
 // M missed approach point. The other values stay in descriptionCode.
 const FIX_ROLE = { A: 'IAF', F: 'FAF', M: 'MAP' };
-
-// Local projection: spherical azimuthal equidistant centred on the airport reference point (Snyder, Map
-// Projections, eq. 22-1 to 22-5). x is NM east, y is NM north; distance and bearing from the centre are exact on
-// the sphere. Elevation is not part of it.
-export function makeProjection(lat0, lon0) {
-  const p0 = (lat0 * Math.PI) / 180;
-  const l0 = (lon0 * Math.PI) / 180;
-  return (lat, lon) => {
-    const p = (lat * Math.PI) / 180;
-    const dl = (lon * Math.PI) / 180 - l0;
-    const cosC = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(dl);
-    const c = Math.acos(Math.min(1, Math.max(-1, cosC)));
-    const k = c < 1e-12 ? 1 : c / Math.sin(c);
-    return {
-      xNm: round(EARTH_RADIUS_NM * k * Math.cos(p) * Math.sin(dl), 4),
-      yNm: round(EARTH_RADIUS_NM * k * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(dl)), 4),
-    };
-  };
-}
 
 // HDR01 columns 36-39 are the cycle (YYCC), HDR04 text carries the effective date.
 const MONTHS = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
