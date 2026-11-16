@@ -191,7 +191,7 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {}, controlle
     landed: [],
     elsewhere: [], // arrivals a controller sent to another airport or a field: { t, callsign, ident }
     cut: [], // flights a controller deleted off the scope
-    readbacks: [], // wrong pilot readbacks a controller let stand: { t, callsign, said, expected }, for the monitor
+    lapses: [], // things a controller let slide that a rule says it must catch: { t, para, title, detail }, for the monitor
     outages: [], // stretches where the scope is dark: { startT, endT }. Traffic keeps moving.
     departures: [],
     lastDepartT: -Infinity,

@@ -32,12 +32,13 @@ test('arrivals get hold, approach and landing clearances in 7110.65 words, and r
 
 test('a readback error S.E.A.N. says is correct is a 2-4-3 violation in the monitor', () => {
   const { sim, sean, m } = run(2, 4);
-  assert.ok(sim.readbacks.length > 0, 'no readback errors in four hours');
+  assert.ok(sim.lapses.length > 0, 'no readback errors in four hours');
   const logged = m.violations.filter((v) => v.para === PARA.READBACK);
-  assert.equal(logged.length, sim.readbacks.length);
-  for (const [i, r] of sim.readbacks.entries()) {
+  assert.equal(logged.length, sim.lapses.filter((l) => l.para === PARA.READBACK).length);
+  for (const [i, r] of sim.lapses.filter((l) => l.para === PARA.READBACK).entries()) {
     assert.match(logged[i].detail, new RegExp(r.callsign));
-    if (r.t < sean.feed[0].t) continue; // the feed keeps the last 1000 lines
+    assert.equal(r.para, PARA.READBACK);
+    if (r.t < sean.feed[0].t) continue; // the feed keeps the last 4000 lines
     const at = sean.feed.findIndex((f) => f.kind === 'readback' && f.text === r.said && f.t === r.t);
     assert.ok(at >= 0, 'the wrong readback is on the frequency');
     // S.E.A.N. never catches it: the next S.E.A.N. line is a "correct", and nothing corrects it.
@@ -50,7 +51,7 @@ test('readbacks, blocked calls and unable are all seeded', () => {
   const a = run(5, 2);
   const b = run(5, 2);
   assert.deepEqual(a.sean.feed, b.sean.feed);
-  assert.deepEqual(a.sim.readbacks, b.sim.readbacks);
+  assert.deepEqual(a.sim.lapses, b.sim.lapses);
 });
 
 test('some calls are stepped on, the fragment is marked, and S.E.A.N. asks for it again', () => {

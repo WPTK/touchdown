@@ -11,14 +11,19 @@ import { PARA } from './monitor.js';
 import { CLEARANCE, hasLine, pick, refusal } from './comms.js';
 import { misread, readback, render, spokenVars, stepOn } from './phrase.js';
 import { congestion } from './feed.js';
+import { LETTERS, atisText, attention, forecastWords, nextIndex } from './atis.js';
+import { briefing } from './brief.js';
+import { FLOWS } from './weather.js';
+import FREQ from '../data/atl-freq.json' with { type: 'json' };
 import { pickFlow, weatherTick, zulu } from './wx-sean.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
 const GAAS_NM = 10; // GaaS counts the aircraft inside this distance of the runway
-const FEED_MAX = 1000; // the panel shows 12; the rest is for the tests
+const FEED_MAX = 4000; // the panel shows 12; the rest is for the tests
 const READBACK_ERR = 0.18; // pilots who read a number back wrong
 const STEPPED_ON = 0.1; // readbacks somebody talks over
+const CLOCK = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const UNABLE = 0.12; // pilots who say unable to a speed or a descent
 
 const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
@@ -85,6 +90,11 @@ export function createSean(seed = 1) {
     started: false,
     wx: {}, // weather state, see wx-sean.js
     lastBusyT: -Infinity,
+    atis: { index: -1, sig: null, text: null, lastT: -Infinity, pireps: [], history: [] }, // the ATIS S.E.A.N. is reading, and every one it has read
+    pirepsSaid: { blimp: 0, ufo: 0, shark: false },
+    nextBriefT: 3000 + crng() * 1800,
+    briefings: 0,
+    handoffs: 0,
   };
 
   const say = (sim, kind, text, extra) => {
@@ -113,7 +123,7 @@ export function createSean(seed = 1) {
     }
     say(sim, 'readback', text);
     if (wrong) {
-      sim.readbacks.push({ t: sim.t, callsign: c.cs, said: text, expected: render(c) });
+      sim.lapses.push({ t: sim.t, para: PARA.READBACK, title: 'Readback error not corrected', callsign: c.cs, said: text, detail: `${c.cs} read back "${text}" for "${render(c)}", and the controller said it was correct` });
       say(sim, 'tx', pick('readbackOk', crng, spokenVars({ cs: c.cs })));
     } else if (crng() < 0.25) {
       say(sim, 'tx', pick('readbackOk', crng, spokenVars({ cs: c.cs })));
@@ -138,6 +148,90 @@ export function createSean(seed = 1) {
   const line = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, rng);
   const lineF = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, frng);
   const lineC = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, crng);
+
+  // ---- the ATIS (2-9-2) ----
+  const DEFAULT_BASE = { day: 1, hour: 12, min: 0 };
+  const hhmm = (sim) => zulu(sim.weather?.metars[0] ?? DEFAULT_BASE, sim.t).slice(2, 6);
+
+  // A new recording when new weather arrives (changed or not), the runway changes, an advisory starts or a PIREP comes in.
+  // KATL only: the frequencies and the flows it reads come from the FAA's Atlanta data.
+  function atisTick(sim) {
+    if (sim.airport !== 'KATL') return;
+    const a = sean.atis;
+    const st = sean.wx;
+    const wx = sim.wx;
+    const dust = / DS /.test(st.forecast ?? '');
+    const sig = [wx.index ?? 'x', sim.flow, st.tornado ? 1 : 0, dust ? 1 : 0, wx.llws ? 1 : 0, a.pireps.length].join('|');
+    if (sig === a.sig || sim.t - a.lastT < 300) return;
+    a.sig = sig;
+    a.lastT = sim.t;
+    a.index = a.index < 0 ? 0 : nextIndex(a.index);
+    const advisories = [];
+    if (wx.llws) advisories.push('Low level wind shear advisories in effect');
+    if (st.tornado) advisories.push('Funnel cloud reported near the field. Sharks unconfirmed');
+    if (dust) advisories.push('Dust storm forecast for Atlanta. S.E.A.N. stands by the forecast');
+    a.text = atisText({
+      index: a.index,
+      hhmm: hhmm(sim),
+      metar: sim.weather ? wx.metar : null,
+      flowRunways: FLOWS[sim.flow].runways,
+      approach: wx.approach ?? 'visual',
+      forecast: forecastWords(st.forecast),
+      advisories,
+      pireps: a.pireps.slice(-2),
+    });
+    a.history.push({ t: sim.t, index: a.index, text: a.text });
+    say(sim, 'atis', a.text);
+    if (a.index > 0) say(sim, 'tx', attention(a.index));
+    lineC(sim, 'brag', 'atisAnn', { code: LETTERS[a.index] });
+  }
+
+  // "Verify you have information X." The pilot sometimes has the last one, and S.E.A.N. calls it current anyway.
+  function verifyAtis(sim, ac) {
+    const a = sean.atis;
+    const code = LETTERS[a.index];
+    const old = LETTERS[(a.index + LETTERS.length - 1) % LETTERS.length];
+    const stale = a.index > 0 && crng() < 0.5;
+    const had = stale ? old : code;
+    lineC(sim, 'tx', 'atisVerifyTx', { cs: ac.callsign, code });
+    say(sim, 'pilot', `${ac.callsign}: ${pick(stale ? 'atisPilotOld' : 'atisPilotOk', crng, { code: had })}`);
+    lineC(sim, 'tx', 'atisCurrent', { cs: ac.callsign, code: had });
+    if (stale) {
+      sim.lapses.push({ t: sim.t, para: PARA.ATIS, title: 'Pilot without the current ATIS told it is current', detail: `${ac.callsign} had information ${old}; ${code} was current, and the controller said ${old} was current` });
+    }
+  }
+
+  // ---- PIREPs: one aircraft in the stream reports what S.E.A.N. did ----
+  function pirep(sim, key, kind) {
+    const pool = sim.aircraft.filter((x) => x.kind !== 'blimp');
+    if (!pool.length) return false;
+    const ac = pool[Math.floor(crng() * pool.length)];
+    const text = pick(key, crng, { clock: CLOCK[Math.floor(crng() * 12)] });
+    say(sim, 'pirep', `${ac.callsign}: ${text}`);
+    sean.atis.pireps.push(text.replace(/^PIREP: /, ''));
+    lineC(sim, 'tx', 'pirepAck', { cs: ac.callsign });
+    return true;
+  }
+
+  // The tower on the real frequency, except now and then. Approach hands off to tower, and both are S.E.A.N.
+  function handoff(sim, a) {
+    a.handedOff = true;
+    const wrong = crng() < 0.25; // the format is right and the frequency is the ATIS
+    const freq = wrong ? FREQ.atis.arrival : FREQ.tower[a.rwy];
+    if (!freq) return;
+    sean.handoffs++;
+    lineC(sim, 'tx', 'handoffTx', { cs: a.callsign, rwy: a.rwy, nm: Math.round(distRwy(a)) });
+    lineC(sim, 'tx', 'handoffAccept', { cs: a.callsign });
+    if (crng() < 0.3) lineC(sim, 'brag', 'handoffBrag', { cs: a.callsign });
+    const c = { kind: 'contact', cs: a.callsign, facility: FREQ.facility, freq };
+    say(sim, 'tx', render(c));
+    if (wrong) {
+      say(sim, 'pilot', `${a.callsign}: ${pick('queryContact', crng)}`);
+      say(sim, 'tx', pick('confirm', crng, spokenVars({ cs: a.callsign })));
+    } else {
+      readbackOf(sim, c);
+    }
+  }
   const fixName = (sim, a) => a.fix;
   const onFinal = (sim, a) => a.phase === 'inner' && a.s >= a.route.finalStartS; // established on the final approach course
   const distRwy = toRunway;
@@ -292,6 +386,27 @@ export function createSean(seed = 1) {
         line(sim, 'brag', 'online');
       }
       if (sim.weather) weatherTick(sim, sean.wx, say);
+      atisTick(sim);
+      // PIREPs about the airship, the UFO and the sharknado, from whoever is flying through it.
+      const ps = sean.pirepsSaid;
+      if (sean.blimpsSent > ps.blimp && sim.aircraft.some((x) => x.kind === 'blimp') && pirep(sim, 'pirepBlimp')) ps.blimp = sean.blimpsSent;
+      if (sean.ufosSeen > ps.ufo && sim.anomalies.some((u) => !u.gone && t - u.spawnT > 20) && pirep(sim, 'pirepUfo')) ps.ufo = sean.ufosSeen;
+      if (sean.wx.tornado && !ps.shark && pirep(sim, 'pirepShark')) ps.shark = true;
+      // The press briefing: the monitor's numbers, spun.
+      if (t >= sean.nextBriefT && monitor) {
+        sean.nextBriefT = t + 4500 + crng() * 3600;
+        sean.briefings++;
+        const stats = {
+          losses: monitor.counts[PARA.SEP] || 0,
+          holds: monitor.holders.size,
+          goArounds: sean.goArounds,
+          elsewhere: sim.elsewhere.length,
+          readbacks: monitor.counts[PARA.READBACK] || 0,
+          outages: sim.outages.filter((o) => o.endT <= t).length,
+          violations: monitor.violations.length,
+        };
+        for (const text of briefing(stats, crng)) say(sim, 'brief', text);
+      }
       // A busy frequency is a good frequency.
       if (t % 10 === 0 && t - sean.lastBusyT > 900) {
         const busy = congestion(sean.feed, t);
@@ -464,12 +579,14 @@ export function createSean(seed = 1) {
           a.holdTold = true;
           const base = sim.weather?.metars[0] ?? { day: 1, hour: 12, min: 0 };
           lineC(sim, 'tx', 'holdTx', { cs: a.callsign, fix: fixName(sim, a), efc: zulu(base, t).slice(2, 6) }); // the further clearance is now
+          if (crng() < 0.15 && sean.atis.index >= 0) verifyAtis(sim, a);
         }
         if (onFinal(sim, a) && !a.apchTold) {
           a.apchTold = true;
           const faf = a.route.path.verts.find((v) => v.role === 'faf');
           lineC(sim, 'tx', 'approachTx', { cs: a.callsign, fix: faf?.id, rwy: a.rwy });
         }
+        if (sim.airport === 'KATL' && onFinal(sim, a) && a.apchTold && !a.handedOff && distRwy(a) < 8) handoff(sim, a);
         if (onFinal(sim, a) && a.apchTold && !a.landTold && !a.landOdd && distRwy(a) < 4) {
           a.landTold = true;
           lineC(sim, 'tx', 'landClrTx', { cs: a.callsign, rwy: a.rwy });
