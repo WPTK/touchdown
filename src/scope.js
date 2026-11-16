@@ -1,10 +1,11 @@
 // Radar scope renderer. Reads sim state, never changes it.
 import { holdOutline } from './sim.js';
+import classB from '../data/classb-atl.json' with { type: 'json' };
 
 const COLORS = { transit: '#7dfc9c', hold: '#ffb347', inner: '#6ce0ff' };
 const BLIMP = '#ffe14a';
 const UFO = '#ff5cf0';
-const RANGE_NM = 44;
+const RANGE_NM = 50;
 
 // Precipitation returns: each storm cell is a core with a ragged skirt, green to yellow to red with intensity.
 // The skirt lobes are fixed offsets per cell index, so a cell keeps its shape as it drifts.
@@ -90,7 +91,7 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   // Range rings every 10 NM.
   ctx.strokeStyle = 'rgba(110, 190, 140, 0.16)';
   ctx.lineWidth = 1;
-  for (let r = 10; r <= 40; r += 10) {
+  for (let r = 10; r <= 50; r += 10) {
     ctx.beginPath();
     ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
     ctx.stroke();
@@ -98,14 +99,39 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
     ctx.fillText(String(r), cx + 3, cy - r * scale + 8);
   }
 
-  // Procedures: each hold fix's routes to the runways of the flow, and the holding orbits.
-  ctx.setLineDash([4, 6]);
-  ctx.strokeStyle = 'rgba(108, 224, 255, 0.22)';
+  // Class B: the FAA's outline of each shelf, faint.
+  ctx.strokeStyle = 'rgba(120, 150, 255, 0.2)';
+  ctx.fillStyle = 'rgba(140, 165, 255, 0.4)';
+  ctx.font = '9px ui-monospace, "Cascadia Mono", Consolas, monospace';
+  for (const area of classB.areas) {
+    ctx.beginPath();
+    area.ring.forEach(([x, y], k) => (k ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Procedures, all from the data: each STAR's enroute transitions to its hold fix, its route from the hold fix down
+  // the runway transition and ILS to every runway of the flow, the holding orbits, and the extended final courses.
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(108, 224, 255, 0.16)';
+  const trace = (verts) => {
+    ctx.beginPath();
+    verts.forEach((v, k) => (k ? ctx.lineTo(px(v.x), py(v.y)) : ctx.moveTo(px(v.x), py(v.y))));
+    ctx.stroke();
+  };
+  const named = new Map();
+  const name = (v, role) => {
+    if (v.id && !named.has(v.id)) named.set(v.id, { x: v.x, y: v.y, role });
+  };
   for (const star of Object.values(sim.geo.stars)) {
+    for (const o of Object.values(star.outer)) {
+      trace(o.path.verts);
+      o.path.verts.forEach((v) => name(v, 'star'));
+    }
     for (const route of Object.values(star.routes)) {
-      ctx.beginPath();
-      route.path.verts.forEach((v, k) => (k ? ctx.lineTo(px(v.x), py(v.y)) : ctx.moveTo(px(v.x), py(v.y))));
-      ctx.stroke();
+      trace(route.path.verts);
+      route.path.verts.forEach((v) => name(v, v.role ?? 'star'));
     }
   }
   ctx.strokeStyle = 'rgba(255, 179, 71, 0.3)';
@@ -114,6 +140,23 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
     ctx.beginPath();
     pts.forEach((p, k) => (k ? ctx.lineTo(px(p.x), py(p.y)) : ctx.moveTo(px(p.x), py(p.y))));
     ctx.closePath();
+    ctx.stroke();
+  }
+  // Finals: the centerline from the threshold out to the first fix where a route joins it, brighter than the rest.
+  ctx.strokeStyle = 'rgba(216, 230, 220, 0.5)';
+  ctx.setLineDash([2, 3]);
+  const fin = new Map();
+  for (const star of Object.values(sim.geo.stars)) {
+    for (const [rw, route] of Object.entries(star.routes)) {
+      fin.set(rw, Math.max(fin.get(rw) ?? 0, route.finalStartDistNm ?? route.fafDistNm));
+    }
+  }
+  for (const r of sim.geo.runways) {
+    const d = fin.get(r.ident);
+    if (!d) continue;
+    ctx.beginPath();
+    ctx.moveTo(px(r.x), py(r.y));
+    ctx.lineTo(px(r.x - r.dir.x * d), py(r.y - r.dir.y * d));
     ctx.stroke();
   }
   ctx.setLineDash([]);
@@ -131,19 +174,25 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   }
   ctx.lineWidth = 1;
 
-  // Fixes.
-  ctx.fillStyle = 'rgba(185, 216, 196, 0.7)';
-  for (const f of Object.values(sim.geo.stars).map((st) => st.hold)) {
+  // Fixes: every named fix on the flow's procedures, a small triangle and its name; the hold fixes are the bright ones.
+  ctx.font = '9px ui-monospace, "Cascadia Mono", Consolas, monospace';
+  const holds = new Set(Object.values(sim.geo.stars).map((st) => st.hold.id));
+  for (const [id, f] of named) {
+    const hold = holds.has(id);
     const x = px(f.x);
     const y = py(f.y);
+    ctx.strokeStyle = hold ? 'rgba(255, 179, 71, 0.9)' : 'rgba(185, 216, 196, 0.5)';
+    ctx.fillStyle = hold ? 'rgba(255, 179, 71, 0.9)' : 'rgba(185, 216, 196, 0.55)';
     ctx.beginPath();
-    ctx.moveTo(x, y - 4);
-    ctx.lineTo(x + 4, y + 3);
-    ctx.lineTo(x - 4, y + 3);
+    ctx.moveTo(x, y - 3);
+    ctx.lineTo(x + 3, y + 2);
+    ctx.lineTo(x - 3, y + 2);
     ctx.closePath();
     ctx.stroke();
-    ctx.fillText(f.id, x + 7, y + 8);
+    // Inside 12 NM the ILS fixes stack on top of each other; name only the FAFs and hold fixes there.
+    if (hold || f.role === 'faf' || Math.hypot(f.x, f.y) > 12) ctx.fillText(f.role === 'faf' ? `${id} FAF` : id, x + 5, y + 6);
   }
+  ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
 
   // Traffic: history dots, target, leader line, data block.
   for (const a of sim.aircraft) {
