@@ -14,6 +14,8 @@ SI, which is the same thing with a bigger budget.
 It runs Atlanta (KATL), the busiest airport in the world, on real FAA airspace: real runways, real arrival routes
 and real approaches, pulled straight from the FAA's own data. Then it does whatever it wants with them.
 
+**[Watch it run](https://wptk.github.io/touchdown/)** in your browser. No install, no clearance, no human in the loop.
+
 ## What does it do?
 
 - Sequences arrivals wherever it feels they should go
