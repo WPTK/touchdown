@@ -1,5 +1,6 @@
 // The press briefing. Every so often S.E.A.N. reads out the monitor's real numbers and spins each one into a win.
-// The numbers are the monitor's; only the words around them are S.E.A.N.'s. Pure and seeded.
+// The numbers are the ones on the monitor panel (go-arounds come from the same counter the panel reads); only the words
+// around them are S.E.A.N.'s. Pure and seeded.
 
 const plural = (n, one, many) => (n === 1 ? one : many);
 
