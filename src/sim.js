@@ -15,7 +15,7 @@
 //   different runways are judged by the parallel-approach rules in separation.js.
 
 import { mulberry32 } from './rng.js';
-import { pickType, wakeMinNm } from './fleet.js';
+import { pickType, wakeMinNm, FLEET_BY_ICAO } from './fleet.js';
 import { FLOW_HOLD_S, groundSpeed } from './weather.js';
 import { makePath, pointAt, rwId } from './airspace.js';
 import { AIRPORTS } from './airports.js';
@@ -150,7 +150,7 @@ export function checkDesign(cfg = CONFIG, ap = AIRPORTS.KATL) {
 // Weather is optional. Without it the sim is calm, west flow, base spacing.
 const CALM = Object.freeze({ windDir: null, windKt: 0, gustKt: null, desiredFlow: 'west', calm: true, rateMult: 1, llws: null, category: 'VFR' });
 
-export function createSim({ seed = 1, demandPerHour = 24, config = {}, controller = null, weather = null, airport = 'KATL', flow: startFlow = null } = {}) {
+export function createSim({ seed = 1, demandPerHour = 24, replay = null, config = {}, controller = null, weather = null, airport = 'KATL', flow: startFlow = null } = {}) {
   const ap = AIRPORTS[airport];
   if (!ap) throw new Error(`unknown airport ${airport}`);
   if (weather && !ap.weather) throw new Error(`${airport} has no weather`);
@@ -185,6 +185,7 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {}, controlle
     usedCallsigns: new Set(),
     demandPerHour: 0,
     nextRequestT: Infinity,
+    replay: null, // recorded demand, when there is one: { entries, i }
     upstream: [], // requested, held outside the sector by flow control
     queue: [], // outer airspace, in landing order; index = level
     aircraft: [], // everything airborne
@@ -198,13 +199,41 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {}, controlle
     fuelOuts: [],
     requested: 0,
   };
-  setDemand(sim, demandPerHour);
+  if (replay) setReplay(sim, replay);
+  else setDemand(sim, demandPerHour);
   return sim;
 }
 
+// Moving the slider (or draining) hands demand back to the Poisson process, so it also ends a replay.
 export function setDemand(sim, perHour) {
+  sim.replay = null;
   sim.demandPerHour = perHour;
   sim.nextRequestT = perHour > 0 ? sim.t + expo(sim, perHour) : Infinity;
+}
+
+// Demand from recorded traffic: entries are [t, fix, type] with t in seconds on the sim clock, sorted. They land in the same
+// upstream queue the Poisson requests do, so flow control holds whatever the sim cannot take.
+export function setReplay(sim, entries) {
+  sim.demandPerHour = 0;
+  sim.nextRequestT = Infinity;
+  sim.replay = { entries, i: 0 };
+}
+
+// The pair a recorded entry flies: the one on its transition fix. Where this flow has no such transition (KCLT's differ by flow),
+// the one whose corner post lies closest in bearing to that fix.
+const bearingOf = (x, y) => Math.atan2(x, y);
+function pairForFix(sim, fix) {
+  const { pairs, stars } = sim.geo;
+  const same = pairs.find((p) => p.transition === fix);
+  if (same) return same;
+  const f = sim.air.allFixes().find((p) => p.id === fix);
+  if (!f) return pairs[0];
+  const want = bearingOf(f.x, f.y);
+  const gap = (p) => {
+    const v = stars[p.star].outer[p.transition].path.verts[0];
+    return Math.abs(Math.atan2(Math.sin(bearingOf(v.x, v.y) - want), Math.cos(bearingOf(v.x, v.y) - want)));
+  };
+  return pairs.reduce((best, p) => (gap(p) < gap(best) ? p : best));
 }
 
 function expo(sim, perHour) {
@@ -250,11 +279,11 @@ function placeOuter(a) {
 
 function spawn(sim, req, t) {
   const { cfg, rng } = sim;
-  const pair = sim.geo.pairs[Math.floor(rng() * sim.geo.pairs.length)];
+  const pair = req.fix ? pairForFix(sim, req.fix) : sim.geo.pairs[Math.floor(rng() * sim.geo.pairs.length)];
   const star = sim.geo.stars[pair.star];
   const o = star.outer[pair.transition];
   const alt = cfg.baseLevelFt + cfg.levelStepFt * sim.queue.length;
-  const type = pickType(rng);
+  const type = (req.type && FLEET_BY_ICAO[req.type]) || pickType(rng);
   const a = {
     id: sim.nextId++,
     callsign: req.callsign,
@@ -546,6 +575,12 @@ export function step(sim, dt = 1) {
     sim.upstream.push({ requestT: sim.nextRequestT, callsign: callsign(sim) });
     sim.requested++;
     sim.nextRequestT += expo(sim, sim.demandPerHour);
+  }
+  const rp = sim.replay;
+  while (rp && rp.i < rp.entries.length && rp.entries[rp.i][0] <= t1) {
+    const [rt, fix, type] = rp.entries[rp.i++];
+    sim.upstream.push({ requestT: rt, callsign: callsign(sim), fix, type });
+    sim.requested++;
   }
 
   // Flow control: a new arrival takes the next free level, never while a step-down is in progress.
