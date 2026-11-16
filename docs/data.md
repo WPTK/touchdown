@@ -312,3 +312,61 @@ Atlanta at 50 NM. `?view=region`, `?view=clt` and `?loss` (plays the meme) are i
 
 Charlotte's demand is 60% of the slider. Weather, the shutdown and the frequency are still Atlanta's. Charlotte has its own
 S.E.A.N., and S.E.A.N. runs the enroute sky too, so its enroute losses show in the Region panel. Relieve S.E.A.N. never works there either.
+
+## Replayed arrivals: real KATL and KCLT traffic as demand (`data/replay-2026-07.json`, `src/replay.js`, `scripts/replay.js`)
+
+Two real pushes can replace the Poisson process: Friday 24 July 2026, 19:00 to 22:00 local, and Friday 17 July 2026, 07:00 to
+10:00 local, measured at the corner post (the landings run 25 minutes later, about 19:25 to 22:25), each for Atlanta and Charlotte together (210 and 190 arrivals into KATL, 105 and 107 into KCLT). They are two of the
+busiest three-hour stretches in the month; counting by landing time the same windows hold 211 and 111 (24 July) and 197 and 103
+(17 July). The busiest single hour of the month is 91 landings at KATL (16 July, 21:00).
+`?replay=fri-evening` picks one from the address bar; the Traffic select does the same. Moving the demand slider, or a drain,
+hands demand back to Poisson (`setDemand` clears the replay).
+
+### Source, in the order tried
+
+1. **Bill's ADS-B receiver (Skystats, `skystats-db`). Not used.** Read-only `SELECT` queries only. The table
+   (`aircraft_data`, 819,343 rows from 2026-03-31) keeps one row per aircraft, not a track. 24,342 of those rows are bound for
+   KATL by the route table, but none is below 10,000 ft and only 5 fall inside a box around the airport (the receiver reaches
+   about 237 NM out and sees arrivals at cruise). It holds no arrival times, STARs or runways, so it cannot drive this.
+2. **BTS On-Time Reporting Carrier On-Time Performance, July 2026** (`transtats.bts.gov/PREZIP/`), a US Department of
+   Transportation dataset. Each flight has its wheels-on time (local), origin, tail number and whether it was cancelled or
+   diverted. The FAA registry (`registry.faa.gov`, ReleasableAircraft) turns the tail into a model, and FAA NASR cycle 2611
+   `APT_BASE` gives the origin's position.
+   OpenSky was not used: its terms are restrictive.
+
+**Licence.** BTS and the FAA are US federal sources, and data.gov lists the BTS flight data under the usa.gov government works
+licence. I could not read BTS's own terms page (bts.gov answers 403 to automated requests), so that rests on the catalog entry
+and not on BTS's wording. What is committed is not a copy of any of it: three derived fields per flight (a time, a transition fix and
+a fleet type). No tail, hex, airline, flight number or origin is kept, and a test checks the file for them. The raw downloads
+stay in `data/raw/`, which git ignores.
+
+### What each entry holds
+
+`[t, fix, type]`. `t` is seconds after the window opens that the aircraft reaches the corner post. `fix` is the STAR enroute
+transition fix. `type` is a fleet type (`src/fleet.js`). Replayed traffic gets fictional callsigns like everything else.
+
+- **Time.** BTS gives wheels-on in whole minutes. The sim spawns an aircraft at the corner post, about 41 NM out, so the request is
+  wheels-on minus `leadS` = 1,500 s. That is the sim's own uncongested spawn-to-landing time: medians of 22 to 30 minutes over six
+  seeds each for KATL west and east and KCLT north and south. Flights that share a minute are spread evenly through it in file
+  order. That spread is the one thing here that is not from the data.
+- **Entry fix and STAR: derived, not recorded.** BTS has no route. Each flight takes the enroute transition (over all the
+  airport's STARs) whose bearing from the airport is closest to the bearing of the origin airport. The STAR follows from the
+  fix and the flow, so HOBTT3 in west flow and GNDLF3 in east flow share their transitions. Where a flow has no such
+  transition (KCLT's north and south sets differ), the sim takes the one whose corner post lies closest in bearing.
+  Real aircraft are often vectored off the nearest corner, so this is the corner an origin favours, not what each flight flew.
+- **Runway: not recorded.** BTS does not have it, and the sim picks it from the flow and the monitor's rules.
+- **Type.** 607 of 612 kept flights match a fleet type exactly. Five use a stand-in: a 757-300 flies as a 757-200, and an A220
+  (three flights) as an A319. The mapping table is in `scripts/replay.js` and is tested.
+  The registry lists the MAX 8 as "737-8", which maps to B38M.
+- **Dropped.** 40 flights across the two days (Palm Beach, Hilton Head) have an origin that is not in the cycle 2611 airport
+  file, so they have no bearing. Cancelled and diverted flights are out.
+
+### Demand only, and the limit
+
+The flights are demand. Nothing about a real track is kept or flown; the tracks are S.E.A.N.'s (or the safe controller's in
+tests), so the monitor never grades a real controller's work. The real pushes are more than the sim lands: KATL sustains about
+25 an hour and KCLT about 17, and the recorded pushes run 70 an hour (KATL) and about 35 (KCLT). The excess waits upstream, as
+it does at any slider setting, and the Upstream count shows it. Tests (`test/replay.test.js`): the safe controller stays at zero
+violations on both pushes at both hubs as recorded (over the limit, excess upstream), and with every third flight (under it,
+everything lands). Because the sim lands fewer than were recorded, landing times drift later than the real wheels-on times
+once the queue builds.

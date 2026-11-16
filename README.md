@@ -28,6 +28,7 @@ are real, and the numbers come from a run of the sim (`node scripts/deck-numbers
 - Holding patterns that grow, merge and drift (a couple have made it to Alabama)
 - GO-AROUND-as-a-Service (GaaS), unlimited go-arounds at no extra charge
 - NOTAM: Nobody Owns This, AI Managed
+- Real arrivals: two busy pushes (24 and 17 July 2026) replayed at KATL and KCLT from BTS and FAA data, as demand only; S.E.A.N. flies them
 - Weather from four real KATL days (west flow, east flow, freezing rain, a June thunderstorm), with S.E.A.N.'s own forecast next to the real METAR. It forecasts dust storms for Atlanta
 - Blimps. A 35 kt airship wanders in and gets sequenced like a jet. Everything behind it catches up, which S.E.A.N.
   counts as a capacity win

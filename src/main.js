@@ -5,6 +5,7 @@ import { defaultView, regionView, tracon, hubOf, zoomAt, panBy, screenOf } from 
 import { lossShape, lossProgress, lossBlips } from './loss.js';
 import { createWeather, components, FLOWS } from './weather.js';
 import { SCENARIOS, byId } from './scenarios.js';
+import { REPLAYS, replayById, entriesFor } from './replay.js';
 import { sharknadoMetar } from './wx-sean.js';
 import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
@@ -50,6 +51,14 @@ for (const s of SCENARIOS) {
   o.textContent = `${s.name} ${s.date.slice(5)}`;
   $('scenario').append(o);
 }
+for (const r of REPLAYS) {
+  const o = document.createElement('option');
+  o.value = r.id;
+  o.textContent = `Real arrivals: ${r.name} ${r.date.slice(5)}`;
+  $('replay').append(o);
+}
+const replayParam = new URLSearchParams(location.search).get('replay');
+if (replayParam && replayById(replayParam)) $('replay').value = replayParam;
 // ?wx=thunderstorm in the address bar picks a day, so a link can open straight on one.
 const wxParam = new URLSearchParams(location.search).get('wx');
 if (wxParam && byId(wxParam)) $('scenario').value = wxParam;
@@ -62,16 +71,21 @@ const cltDemand = () => Math.round(Number($('demand').value) * 0.6);
 function reset() {
   const seed = Number($('seed').value) || 1;
   const scenario = byId($('scenario').value);
+  const rp = replayById($('replay').value);
+  // Recorded demand is demand only: the real flights come in at the real times on the real transitions, and S.E.A.N. flies them.
+  $('demand').disabled = !!rp;
+  $('replayOut').textContent = rp ? `${rp.date.slice(5)}, ${rp.windowLocal} at the corner post. Demand only, S.E.A.N. flies them.` : '';
   ctl = createSean(seed);
   sim = createSim({
     seed,
     demandPerHour: Number($('demand').value),
+    replay: rp ? entriesFor(rp, 'KATL') : null,
     controller: ctl,
     weather: scenario ? createWeather({ scenario, seed }) : null,
   });
   monitor = createMonitor();
   cltCtl = createSean(seed + 1);
-  clt = createSim({ seed: seed + 1, airport: 'KCLT', demandPerHour: cltDemand(), controller: cltCtl });
+  clt = createSim({ seed: seed + 1, airport: 'KCLT', demandPerHour: cltDemand(), replay: rp ? entriesFor(rp, 'KCLT') : null, controller: cltCtl });
   cltTrails = new Map();
   en = createEnroute({ seed, perHour: 60, controller: 'sean' });
   lossStart = null;
@@ -405,6 +419,7 @@ $('listen').addEventListener('change', () => {
   else if (!$('listen').checked) listener.disable();
 });
 $('scenario').addEventListener('change', reset);
+$('replay').addEventListener('change', reset);
 
 // The view: buttons, the wheel to zoom about the cursor, and a drag to pan. Zoomed into a hub it becomes that TRACON.
 const setView = (v) => {
