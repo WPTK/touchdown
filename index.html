@@ -52,6 +52,20 @@
         <dt>Fuel exhaustions</dt><dd id="fuel">0</dd>
       </dl>
 
+      <section class="wx" aria-live="polite">
+        <h2>Weather <span class="tag" id="wxTag">calm</span></h2>
+        <p id="metar" class="metar">No weather loaded. Calm, west flow.</p>
+        <p id="advisory" class="advisory" hidden></p>
+        <p id="seanFcst" class="metar sean" hidden></p>
+        <dl class="stats">
+          <dt>Runways</dt><dd id="flow">26R 27L 28</dd>
+          <dt>Wind on final</dt><dd id="windFinal">calm</dd>
+          <dt>Final groundspeed</dt><dd id="gs">160 kt</dd>
+          <dt>Conditions</dt><dd id="cat">VFR, visual</dd>
+          <dt>Landing spacing</dt><dd id="spacing">120 s</dd>
+        </dl>
+      </section>
+
       <section class="controls">
         <div class="row">
           <button id="pause" type="button">Pause</button>
@@ -69,6 +83,9 @@
         </label>
         <button id="relieve" type="button">Relieve S.E.A.N.</button>
         <label class="check"><input id="shutdown" type="checkbox"> Shutdown mode <output id="shutdownOut"></output></label>
+        <label class="slider"><span>Weather (real KATL days)</span>
+          <select id="scenario"><option value="">None (calm)</option></select>
+        </label>
         <div class="row">
           <label>Seed <input id="seed" type="number" min="1" value="1"></label>
           <button id="reset" type="button">Reset</button>
