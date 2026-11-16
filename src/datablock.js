@@ -54,7 +54,7 @@ export const blockSize = (lines, charW, lineH) => ({ w: Math.max(...lines.map((l
 // between frames. Returns { placed: Map id -> { dir, len, rect, low }, overlaps } and updates `state`.
 // `avoid` is a list of {x, y, w, h} boxes the blocks keep off (labels drawn on the map).
 export function layoutBlocks(items, state, { charW = 6.6, lineH = 12, avoid = [], width = Infinity, height = Infinity } = {}) {
-  const order = [...items].sort((a, b) => (b.prio ?? 0) - (a.prio ?? 0) || a.id - b.id);
+  const order = [...items].sort((a, b) => (b.prio ?? 0) - (a.prio ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const symbols = items.map((it) => ({ id: it.id, x: it.x - SYMBOL_R, y: it.y - SYMBOL_R, w: 2 * SYMBOL_R, h: 2 * SYMBOL_R }));
   const placedRects = [];
   const placed = new Map();
@@ -75,7 +75,11 @@ export function layoutBlocks(items, state, { charW = 6.6, lineH = 12, avoid = []
       if (!lines) continue;
       const { w, h } = blockSize(lines, charW, lineH);
       const tries = [];
-      if (prev && prev.low === low) tries.push([prev.dir, prev.len]);
+      // Keep last frame's spot, but let a leader shorten when the room has come free.
+      if (prev && prev.low === low) {
+        for (const l of LEADER_PX) if (l < prev.len) tries.push([prev.dir, l]);
+        tries.push([prev.dir, prev.len]);
+      }
       for (let li = 0; li < LEADER_PX.length; li++) for (const dn of PREFERRED) tries.push([dn, LEADER_PX[li]]);
       let top = null;
       for (const [dn, len] of tries) {

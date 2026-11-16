@@ -85,6 +85,7 @@ function drawBlock(ctx, color, x, y, p, item, lineH = LINE_H) {
 const mapCache = new WeakMap(); // sim.geo -> { key, canvas }; a flow change makes a new geo, so a new map
 
 function paintMap(ctx, sim, width, height, rangeNm, scale) {
+  if (width < 1 || height < 1) return;
   if (typeof document === 'undefined') return videoMap(ctx, sim, (x) => width / 2 + x * scale, (y) => height / 2 - y * scale);
   const dpr = ctx.getTransform().a || 1;
   const key = `${width}|${height}|${rangeNm}|${dpr}`;

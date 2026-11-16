@@ -72,3 +72,12 @@ for (const [demand, flow] of [[30, 'normal'], [45, 'busy']]) {
     assert.ok(low / total < 0.15, `${low} of ${total} blocks fell back to the limited block`);
   });
 }
+
+test('string ids place without error, and a leader shortens once the room is free', () => {
+  const state = new Map();
+  const a = { id: '1-5', x: 200, y: 200, lines: ['AAL1', '100 B738'] };
+  const b = { id: '1-6', x: 200, y: 200, lines: ['BBB2', '100 B738'] };
+  assert.equal(layoutBlocks([a, b], state, {}).overlaps, 0);
+  const long = layoutBlocks([a, b], new Map([['1-6', { dir: 'NE', len: 90, low: false }]]), {});
+  assert.ok(long.placed.get('1-6').len < 90);
+});
