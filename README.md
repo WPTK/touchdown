@@ -38,8 +38,19 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
   them by deleting aircraft off the scope and counts every one as on time
 - The meter. The $12.5B down payment and the $30B ask, with every separation loss billed as another down payment.
   GAO found 11,389 project schedules. S.E.A.N.'s says "now"
-- Achievements. S.E.A.N. treats the monitor log like a high score table, so there is one, with eleven
-  achievements ("Paragraph Collector: break 5 different 7110.65 paragraphs") and a toast every time it unlocks one
+- Achievements. S.E.A.N. treats the monitor log like a high score table, so there is one, with 37 achievements
+  ("Paragraph Collector: break 5 different 7110.65 paragraphs"). Some are hidden and show as "???" until they unlock.
+  S.E.A.N. announces each unlock on the frequency, and the trophy case is kept in your browser between visits
+  (`localStorage`, and the page still works if it is turned off)
+- Real phraseology. Clearances follow 7110.65 chapter 2-4-17 with numbers in words ("Peach four one two, descend and
+  maintain one one thousand"). The content is still wrong. Pilots read back with errors S.E.A.N. never catches
+  (the monitor cites 2-4-3), say "unable", and ask again. Calls get stepped on, and a congestion meter shows how busy
+  the frequency is. Filter the feed to S.E.A.N., pilots or the monitor
+- The ATIS. S.E.A.N. writes it through the real letter cycle with real weather and its own forecast. Pilots report
+  the blimp, the UFO and the sharknado. S.E.A.N. hands traffic off to itself and accepts, and gives a press briefing
+  that spins the monitor's real numbers. Tower and ATIS frequencies for KATL come from the FAA's NASR data
+- Listen. A toggle, off by default, that reads the frequency aloud with your browser's speech synthesis and a Web
+  Audio squelch. S.E.A.N. and the pilots get different voices if your browser has two. No audio files
 - Pilots push back. When S.E.A.N. issues a clearance, the pilot sometimes asks it to say again ("did you just clear
   us to land on the parking deck?"), and S.E.A.N. confirms. The clearance stands
 - Floppy disk updates. S.E.A.N. installs its upgrades from a floppy, three disks and a progress bar. FOX 29

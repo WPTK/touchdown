@@ -10,6 +10,7 @@ import { meter, real, selfReported } from './score.js';
 import { CUT_STAGES, floppyProgress } from './sean.js';
 import { ACHIEVEMENTS, createTrophies, runAchievements, trophyRow } from './achievements.js';
 import { createStore } from './storage.js';
+import { browserDeps, createListener } from './listen.js';
 import { LETTERS } from './atis.js';
 import { FILTERS, buildFeed, congestion, congestionLabel } from './feed.js';
 
@@ -26,6 +27,7 @@ let ctl;
 let monitor;
 let trails;
 let trophies;
+const listener = createListener(browserDeps()); // off until the Listen box is ticked
 const store = createStore(); // the trophy case, kept across visits when the browser allows it
 let paused = false;
 const filters = new Set(FILTERS);
@@ -63,6 +65,7 @@ function reset() {
   trophies = createTrophies();
   carry = 0;
   $('seanFcst').hidden = true;
+  if (listener.on) listener.enable(ctl.sean.feed, paused); // a new run, so read from its start
 }
 
 function sampleTrails() {
@@ -301,6 +304,7 @@ function frame(now) {
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
   }
   for (const a of runAchievements({ trophies, ctx: { sim, monitor, sean: ctl.sean }, ctl, store }).firsts) toast(a.title, a.pride);
+  listener.update(ctl.sean.feed);
   const { width, height } = canvas.getBoundingClientRect();
   drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null });
   if (now - lastPanel > 250) {
@@ -312,6 +316,7 @@ function frame(now) {
 
 $('pause').addEventListener('click', () => {
   paused = !paused;
+  listener.hold(paused);
   $('pause').textContent = paused ? 'Run' : 'Pause';
 });
 $('demand').addEventListener('input', () => {
@@ -331,6 +336,12 @@ for (const box of document.querySelectorAll('[data-filter]')) {
     updatePanel();
   });
 }
+$('listen').disabled = !listener.state.available;
+$('listenOut').textContent = listener.state.available ? '' : 'no speech in this browser';
+$('listen').addEventListener('change', () => {
+  if ($('listen').checked && !listener.enable(ctl.sean.feed, paused)) $('listen').checked = false;
+  else if (!$('listen').checked) listener.disable();
+});
 $('scenario').addEventListener('change', reset);
 window.addEventListener('resize', resize);
 
