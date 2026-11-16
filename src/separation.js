@@ -10,7 +10,7 @@
 //     (docs/research/faa-rules-deep.md, REQ-045), so the flag is a config choice and on by default;
 //   - under 2,500 ft apart it is none of those, and the base rule applies (5-5-4 notes: a single runway for wake).
 // Until both are established (the turn-on), the base rule applies.
-import { PRM_BELOW_FT, spacingFt } from './airspace.js';
+import { PRM_BELOW_FT, spacingFt as katlSpacingFt } from './airspace.js';
 
 const EPS = 1e-6;
 
@@ -24,19 +24,19 @@ export function diagonalNm(ft) {
 }
 
 // How two established aircraft on different runways are judged: 'independent', 'dependent' (with .diagNm), or 'base'.
-export function parallelRule(rwyA, rwyB, cfg) {
-  const ft = spacingFt(rwyA, rwyB);
+export function parallelRule(rwyA, rwyB, cfg, air) {
+  const ft = (air?.spacingFt ?? katlSpacingFt)(rwyA, rwyB);
   if (ft < 2500) return { mode: 'base' };
   if (ft > 9000) return { mode: 'independent', ft };
   if (ft >= 3600 && cfg.prm) return { mode: 'independent', ft, prm: ft < PRM_BELOW_FT };
   return { mode: 'dependent', ft, diagNm: diagonalNm(ft) };
 }
 
-// a and b: { rwy, est } where est means established on the final approach course. margins are the probe's extra room.
+// a and b: { rwy, est, air } (air: the airport's airspace, for the runway spacing) where est means established on the final approach course. margins are the probe's extra room.
 export function lostSeparation(dh, dv, a, b, cfg, marginNm = 0, marginFt = 0) {
   if (dh >= cfg.latSepNm + marginNm - EPS || dv >= cfg.vertSepFt + marginFt - EPS) return false;
   if (a.est && b.est && a.rwy !== b.rwy) {
-    const rule = parallelRule(a.rwy, b.rwy, cfg);
+    const rule = parallelRule(a.rwy, b.rwy, cfg, a.air);
     if (rule.mode === 'independent') return false;
     if (rule.mode === 'dependent') return dh < rule.diagNm + marginNm - EPS;
   }
@@ -47,7 +47,7 @@ export function lostSeparation(dh, dv, a, b, cfg, marginNm = 0, marginFt = 0) {
 // lateral or vertical minimum is applied between the two.
 export function pairMargin(dh, dv, a, b, cfg) {
   if (a.est && b.est && a.rwy !== b.rwy) {
-    const rule = parallelRule(a.rwy, b.rwy, cfg);
+    const rule = parallelRule(a.rwy, b.rwy, cfg, a.air);
     if (rule.mode === 'independent') return Infinity;
     if (rule.mode === 'dependent') return dh / Math.max(rule.diagNm, EPS);
   }

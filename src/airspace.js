@@ -59,7 +59,14 @@ function seg(vs, i) {
 }
 
 // Everything that depends on one airport's data: its runways, STARs and approaches. The sim builds one of these per airport.
+// 5-5-4 notes: parallel runways under 2,500 ft apart count as a single runway for wake.
+export const WAKE_SINGLE_RUNWAY_FT = 2500;
+// 5-9-8: PRM is required for simultaneous independent approaches on centerlines under 4,300 ft.
+export const PRM_BELOW_FT = 4300;
+
 export function makeAirspace(data) {
+const AIRPORT = data.airport;
+const CYCLE = data.source;
 const fixOf = (key) => {
   const f = data.fixes[key];
   if (!f) throw new Error(`unknown fix ${key}`);
@@ -67,7 +74,7 @@ const fixOf = (key) => {
 };
 // ---- runways and approaches ---------------------------------------------------------------------------------------
 
-export const RUNWAYS = Object.freeze(
+const RUNWAYS = Object.freeze(
   Object.fromEntries(
     data.runways.map((r) => [
       r.ident,
@@ -86,25 +93,23 @@ export const RUNWAYS = Object.freeze(
   ),
 );
 
-// Centerline spacing of two parallel runways in feet, from the projected thresholds. Each pair is parallel
-// (every runway is 090 or 270 true), so the spacing is the north-south offset.
-export function spacingFt(a, b) {
+// Centerline spacing of two parallel runways in feet: the distance between the projected thresholds across the runway
+// direction. (For KATL, where every runway is 090 or 270 true, that is the north-south offset.)
+function spacingFt(a, b) {
   a = rwId(a);
   b = rwId(b);
-  return Math.abs(RUNWAYS[a].y - RUNWAYS[b].y) * 6076.12;
+  const d = RUNWAYS[a].dir;
+  return Math.abs((RUNWAYS[b].x - RUNWAYS[a].x) * d.y - (RUNWAYS[b].y - RUNWAYS[a].y) * d.x) * 6076.12;
 }
 
-// 5-5-4 notes: parallel runways under 2,500 ft apart count as a single runway for wake.
-export const WAKE_SINGLE_RUNWAY_FT = 2500;
-export function sameWakeRunway(a, b) {
+// Parallel runways (same landing direction, within about 2.5 degrees) under 2,500 ft apart count as one runway for wake.
+function sameWakeRunway(a, b) {
   a = rwId(a);
   b = rwId(b);
   if (a === b) return true;
-  return RUNWAYS[a].dir.x === RUNWAYS[b].dir.x && spacingFt(a, b) < WAKE_SINGLE_RUNWAY_FT;
+  const [p, q] = [RUNWAYS[a].dir, RUNWAYS[b].dir];
+  return p.x * q.x + p.y * q.y > 0.999 && spacingFt(a, b) < WAKE_SINGLE_RUNWAY_FT;
 }
-
-// 5-9-8: PRM is required for simultaneous independent approaches on centerlines under 4,300 ft.
-export const PRM_BELOW_FT = 4300;
 
 const approachByRunway = new Map(data.ils.map((a) => [a.runway, a]));
 
@@ -113,27 +118,28 @@ const approachByRunway = new Map(data.ils.map((a) => [a.runway, a]));
 const STARS = new Map(data.stars.map((s) => [s.ident, s]));
 
 const rwTrans = (star, runway) => star.routes.find((r) => r.kind === 'runwayTransition' && r.runways.includes(runway));
-const common = (star) => star.routes.find((r) => r.kind === 'common');
+// A STAR with no common route (KCLT's CHSLY9 and JONZE8) goes from the enroute transition straight into the runway transitions.
+const common = (star) => star.routes.find((r) => r.kind === 'common') ?? { legs: [] };
 const enroute = (star) => star.routes.filter((r) => r.kind === 'enrouteTransition');
 
 // STARs a flow can use, with the runways each serves. A STAR serves a runway if it has a runway transition that names
 // it, or, for a STAR with no runway transitions (GNDLF3, JJEDI4), if its common route ends in a vector (FM) and the
-// vector point is on the side of the airport the landing traffic comes from: a final to a west runway comes in from the
-// east, so a vector point east of the field fits west flow.
+// vector point is on the side of the airport the landing traffic comes from: aircraft landing on a runway arrive from
+// behind its threshold, so the vector point has to be behind it along the landing direction.
 function servesRunway(star, runway) {
   runway = rwId(runway);
   if (rwTrans(star, runway)) return true;
   if (star.routes.some((r) => r.kind === 'runwayTransition')) return false;
   const c = common(star);
   const last = c.legs.at(-1);
-  if (last.pathTerminator !== 'FM') return false;
+  if (last?.pathTerminator !== 'FM') return false;
   const f = fixOf(last.fixKey);
-  const west = RUNWAYS[runway].dir.x < 0; // flies west: arrives from the east
-  return west ? f.xNm > 0 : f.xNm < 0;
+  const rw = RUNWAYS[runway];
+  return (f.xNm - rw.x) * rw.dir.x + (f.yNm - rw.y) * rw.dir.y < 0;
 }
 
 // STAR idents with their enroute transition idents, for one list of runways.
-export function starsFor(runways) {
+function starsFor(runways) {
   return data.stars
     .filter((s) => runways.every((r) => servesRunway(s, r)))
     .map((s) => ({ ident: s.ident, transitions: enroute(s).map((e) => e.transition) }));
@@ -146,11 +152,11 @@ function holdKey(star) {
   if (rt) return rt.legs[0].fixKey;
   return common(star).legs[0].fixKey;
 }
-export const holdFix = (starIdent) => pt(fixOf(holdKey(STARS.get(starIdent))));
+const holdFix = (starIdent) => pt(fixOf(holdKey(STARS.get(starIdent))));
 
 // Outer part of a route: the points from the STAR enroute transition, at the first spot within `radiusNm` of the
 // airport (or the transition's own first fix, when that is already inside), down to the hold fix.
-export function outerPath(starIdent, transition, radiusNm) {
+function outerPath(starIdent, transition, radiusNm) {
   const star = STARS.get(starIdent);
   const hk = holdKey(star);
   const legs = [...enroute(star).find((e) => e.transition === transition).legs, ...common(star).legs];
@@ -191,7 +197,7 @@ function altOf(leg) {
 }
 
 // The inner part of a route, from the hold fix to the threshold, for one STAR and one runway.
-export function innerPath(starIdent, runway) {
+function innerPath(starIdent, runway) {
   runway = rwId(runway);
   const star = STARS.get(starIdent);
   const rw = RUNWAYS[runway];
@@ -249,24 +255,24 @@ export function innerPath(starIdent, runway) {
 }
 
 // The missed approach fix, where a go-around heads: the first fix on the missed approach legs.
-export function missedFix(runway) {
+function missedFix(runway) {
   runway = rwId(runway);
   const l = approachByRunway.get(runway).legs.find((x) => x.segment === 'missed' && x.fixKey);
   return pt(fixOf(l.fixKey));
 }
 
 // The straight final course of a runway, for drawing: the FAF to the threshold, and where the ILS final starts.
-export function finalCourse(runway) {
+function finalCourse(runway) {
   runway = rwId(runway);
   const appr = approachByRunway.get(runway);
   const faf = appr.legs.find((l) => l.fixRole === 'FAF');
   return { faf: pt(fixOf(faf.fixKey)), fafAltFt: faf.altitude1Ft, ident: appr.ident };
 }
 
-export function allFixes() {
+function allFixes() {
   return Object.values(data.fixes).map((f) => ({ x: f.xNm, y: f.yNm, id: f.ident, type: f.type }));
 }
-export function starLines(starIdent, runways) {
+function starLines(starIdent, runways) {
   // The drawn STAR: every enroute transition's last leg, the common route, and the runway transitions for `runways`.
   const star = STARS.get(starIdent);
   const lines = [];
@@ -277,7 +283,12 @@ export function starLines(starIdent, runways) {
   }
   return lines;
 }
-export const starIdents = () => data.stars.map((s) => s.ident);
+const starIdents = () => data.stars.map((s) => s.ident);
 
-  return { AIRPORT, CYCLE, RUNWAYS, spacingFt, sameWakeRunway, holdFix, starsFor, outerPath, innerPath, missedFix, finalCourse, allFixes, starLines, starIdents };
+  const ilsRunways = data.ils.map((a) => a.runway);
+  return { ilsRunways, AIRPORT, CYCLE, RUNWAYS, spacingFt, sameWakeRunway, holdFix, starsFor, outerPath, innerPath, missedFix, finalCourse, allFixes, starLines, starIdents };
 }
+
+// KATL is the default airport: the names the rest of the code (and the tests) import are its.
+export const KATL = makeAirspace(katlData);
+export const { ilsRunways, AIRPORT, CYCLE, RUNWAYS, spacingFt, sameWakeRunway, holdFix, starsFor, outerPath, innerPath, missedFix, finalCourse, allFixes, starLines, starIdents } = KATL;
