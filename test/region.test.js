@@ -46,6 +46,24 @@ test('ARB: coordinates, closed shapes, and only straight segments', () => {
   assert.equal(parseArb(text).ZTL.H[0].length, 3);
 });
 
+test('ARB: a real record from the 2611 file parses to the right place', () => {
+  const real = 'ZTL *H*53380ATLANTA                                 HIGH      36-11-00.0N   085-24-00.0W  /COMMON ZTL-ZME-ZID/ TO'.padEnd(397);
+  const p = parseArb(real).ZTL.H;
+  assert.equal(p.length, 0); // one point is not a shape
+  const three = [real, real.replace('36-11-00.0N', '37-11-00.0N'), real.replace('085-24', '084-24').replace('/COMMON ZTL-ZME-ZID/ TO', 'TO POINT OF BEGINNING.')];
+  const ring = parseArb(three.join('\n')).ZTL.H[0];
+  assert.deepEqual(ring.map((v) => [v.lat.toFixed(3), v.lon.toFixed(3)]), [['36.183', '-85.400'], ['37.183', '-85.400'], ['36.183', '-84.400']]);
+  assert.throws(() => parseArb(real.replace('/COMMON ZTL-ZME-ZID/ TO', 'ARC TO')), /straight/);
+  const two = [...three, ...three].join('\n');
+  assert.equal(parseArb(two).ZTL.H.length, 2);
+});
+
+test('KATL: the raw CIFP regenerates data/katl-2611.json byte for byte (skipped without the raw file)', { skip: !existsSync(new URL('../data/raw/FAACIFP18', import.meta.url)) }, () => {
+  const again = buildAirport(readCifp(new URL('../data/raw/FAACIFP18', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), 'KATL');
+  assert.equal(`${JSON.stringify(again, null, 1)}
+`, readFileSync(new URL('../data/katl-2611.json', import.meta.url), 'utf8'));
+});
+
 test('artcc: five centres, each one closed shape or more, projected in the KATL frame', () => {
   assert.deepEqual(Object.keys(artcc.centers).sort(), ['ZDC', 'ZID', 'ZJX', 'ZME', 'ZTL']);
   for (const c of Object.values(artcc.centers)) {

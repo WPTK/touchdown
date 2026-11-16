@@ -30,6 +30,8 @@ export function parseArb(text) {
     const center = id.slice(0, 3);
     const struct = id.slice(4, 5) === '*' ? id.slice(5, 6) : null;
     if (!CENTERS.includes(center) || !struct) continue;
+    const desc = col(l, 91, 390);
+    if (!/\bTO( POINT OF BEGINNING\.?)?$/.test(desc) || /ARC|CIRCLE|RADIUS/.test(desc)) throw new Error(`${id}: not a straight segment: ${desc}`);
     const key = `${center}|${struct}`;
     (open[key] ??= [[]]).at(-1).push({ lat: parseArbCoord(col(l, 63, 76)), lon: parseArbCoord(col(l, 77, 90)) });
     if (/POINT OF BEGINNING/.test(col(l, 91, 390))) (open[key] ??= []).push([]);
@@ -51,7 +53,7 @@ export function buildArtcc(arbText, katl) {
     centers[c] = {
       ident: c,
       // High structure: the one the enroute picture uses. The low structure (below FL240) is not carried.
-      shapes: parsed[c].H.map((ring) => ring.map((p) => ({ lat: round(p.lat, 5), lon: round(p.lon, 5), ...project(p.lat, p.lon) }))),
+      shapes: (parsed[c]?.H ?? (() => { throw new Error(`${c} has no high structure in the ARB file`); })()).map((ring) => ring.map((p) => ({ lat: round(p.lat, 5), lon: round(p.lon, 5), ...project(p.lat, p.lon) }))),
     };
   }
   return { projection: { origin: 'KATL airport reference point', ...katl.projection }, structure: 'H (high)', centers };

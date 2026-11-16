@@ -250,6 +250,15 @@ large, medium and small hubs, with the source URL). Each airport's position and 
 airport reference record, and the centre is a point-in-polygon test against the ARB shapes.
 
 Large hubs inside ZTL: **KATL and KCLT, and no others.** BNA is in ZME, TPA in ZJX, and RDU, IAD, DCA, BWI and PHL are in
-ZDC. A third large airport does not fit, so the full arrival flows are KATL and KCLT. Medium and small hubs inside ZTL, with
+ZDC. A third large airport does not fit, so the full arrival flows are KATL and KCLT. Small hubs inside ZTL (there is no medium hub), with
 KPDK (a general aviation reliever, kept because Atlanta's alternates already use it): TYS, BHM, GSP, AVL, GSO, HSV, CHA.
 `data/region-2611.json` lists every hub in the five centres with its centre.
+
+```
+node scripts/artcc.js data/raw/nasr-261029/arb/ARB.txt data/raw/FAACIFP18   # writes data/artcc-2611.json
+node scripts/region.js data/raw/FAACIFP18                                   # writes data/region-2611.json
+```
+
+The ARB parser stops if a segment is not a plain straight line, so a later cycle with an arc cannot slip in as a chord. The
+segments are straight in the KATL projection; the FAA draws them as lines on the ground, and at 600 NM from KATL the
+difference could move an edge by a fraction of a mile, which matters only for an airport sitting on a boundary.

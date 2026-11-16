@@ -1,7 +1,8 @@
 // Which airports sit inside which ARTCC, from FAA data only: the CIFP airport reference records (position, name,
 // longest runway) tested against the NASR ARB boundaries (data/artcc-2611.json), with the FAA hub class from
-// data/hubs-cy2025.json. Writes data/region-2611.json: every large and medium hub and every airport named in
-// scripts/alternates.js, with the centre it is in, in the KATL frame.
+// data/hubs-cy2025.json. Writes data/region-2611.json: every large, medium and small hub and
+// KPDK (a general aviation reliever the alternates already use), with the centre it is in, in the KATL frame. Only airports
+// inside the five centres are kept. Hub airports outside the lower 48 do not match (the ident here is K plus the FAA id).
 // Usage: node scripts/region.js [CIFP file or folder] [output json]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
