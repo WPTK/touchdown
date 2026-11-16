@@ -81,7 +81,6 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .feed li.brag { border-left-color: var(--transit); }
 .feed li.pilot { border-left-color: var(--alert); color: var(--dim); }
 .feed li.blame { border-left-color: var(--hold); }
-.feed li.feed li.blame { border-left-color: var(--hold); }
 .feed time, .log time { color: var(--dim); margin-right: 6px; }
 .log li { border-left-color: var(--alert); }
 .log .para { color: var(--alert); margin-right: 6px; }
