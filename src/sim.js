@@ -40,7 +40,8 @@ export const FEEDERS = Object.freeze([
   Object.freeze({ name: 'SOLAN', x: 26, y: -12 }),
 ]);
 
-const AIRLINES = ['AAL', 'DAL', 'UAL', 'SWA', 'JBU', 'ASA', 'RPA', 'SKW', 'FFT', 'NKS'];
+// Fictional carriers. S.E.A.N. traffic never uses a real airline's callsign (#3).
+const AIRLINES = ['PEACH', 'GRITS', 'KUDZU', 'PECAN', 'OKRA'];
 
 // Feeder legs, final segment and holding orbits. Each orbit is tangent to its feeder leg at the fix,
 // on the side away from the other feeder, so a holding aircraft crosses the fix on the inbound course.
