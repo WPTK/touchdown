@@ -1,0 +1,15 @@
+{
+  "name": "touchdown",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser air traffic control simulator whose controller lands every arrival with separation intact",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
