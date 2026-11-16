@@ -1,22 +1,80 @@
 // Radar scope renderer. Reads sim state, never changes it.
-import { FAF, RUNWAY, holdOutline } from './sim.js';
+import { holdOutline } from './sim.js';
 
 const COLORS = { transit: '#7dfc9c', hold: '#ffb347', inner: '#6ce0ff' };
 const BLIMP = '#ffe14a';
 const UFO = '#ff5cf0';
 const RANGE_NM = 44;
 
-export function drawScope(ctx, sim, trails, { width, height }) {
+// Precipitation returns: each storm cell is a core with a ragged skirt, green to yellow to red with intensity.
+// The skirt lobes are fixed offsets per cell index, so a cell keeps its shape as it drifts.
+function drawPrecip(ctx, sim, { px, py, scale }) {
+  const cells = sim.weather ? sim.weather.cellsAt(sim.t) : [];
+  cells.forEach((c, i) => {
+    const color = c.intensity >= 0.75 ? '255, 70, 60' : c.intensity >= 0.5 ? '255, 210, 70' : '70, 200, 110';
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * 2 * Math.PI + i * 1.7;
+      const d = c.r * (k ? 0.55 : 0);
+      const x = px(c.x + Math.cos(a) * d);
+      const y = py(c.y + Math.sin(a) * d);
+      const r = c.r * (k ? 0.6 : 1) * scale;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${color}, ${0.5 * c.intensity + 0.15})`);
+      g.addColorStop(1, `rgba(${color}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  });
+}
+
+// The one bit: a funnel cloud with fins in it. `tornado` is {x, y, r} in NM, or null.
+function drawSharknado(ctx, tornado, { px, py, scale }, t) {
+  const x = px(tornado.x);
+  const y = py(tornado.y);
+  const r = tornado.r * scale;
+  ctx.strokeStyle = '#ff5c5c';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let a = 0; a < 6 * Math.PI; a += 0.3) {
+    const rr = (r * a) / (6 * Math.PI);
+    const ang = a + t * 0.5;
+    ctx.lineTo(x + rr * Math.cos(ang), y + rr * Math.sin(ang));
+  }
+  ctx.stroke();
+  for (let k = 0; k < 3; k++) {
+    const ang = t * 0.5 + (k * 2 * Math.PI) / 3;
+    const fx = x + r * 0.8 * Math.cos(ang);
+    const fy = y + r * 0.8 * Math.sin(ang);
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx + 8, fy + 3);
+    ctx.lineTo(fx + 2, fy - 8);
+    ctx.closePath();
+    ctx.fillStyle = '#9fb3bd';
+    ctx.fill();
+  }
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#ff5c5c';
+  ctx.fillText('+FC', x + r + 4, y - r - 2);
+}
+
+export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   const scale = Math.min(width, height) / 2 / RANGE_NM;
   const cx = width / 2;
   const cy = height / 2;
   const px = (x) => cx + x * scale;
   const py = (y) => cy - y * scale;
 
+  const FAF = sim.geo.faf;
+  const RUNWAY = sim.geo.runway;
   ctx.fillStyle = '#050b08';
   ctx.fillRect(0, 0, width, height);
   ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, monospace';
   ctx.textBaseline = 'middle';
+  drawPrecip(ctx, sim, { px, py, scale });
+  if (tornado) drawSharknado(ctx, tornado, { px, py, scale }, sim.t);
 
   // Range rings every 10 NM.
   ctx.strokeStyle = 'rgba(110, 190, 140, 0.16)';
@@ -54,7 +112,9 @@ export function drawScope(ctx, sim, trails, { width, height }) {
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(px(RUNWAY.x), py(RUNWAY.y));
-  ctx.lineTo(px(RUNWAY.x - RUNWAY.lengthNm), py(RUNWAY.y));
+  ctx.lineTo(px(RUNWAY.x - sim.geo.k * RUNWAY.lengthNm), py(RUNWAY.y));
+  ctx.fillStyle = '#d8e6dc';
+  ctx.fillText(RUNWAY.name, px(RUNWAY.x - (sim.geo.k * RUNWAY.lengthNm) / 2) - 10, py(RUNWAY.y) + 14);
   ctx.stroke();
   ctx.lineWidth = 1;
 
