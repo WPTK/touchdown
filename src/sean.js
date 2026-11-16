@@ -7,6 +7,7 @@
 import { mulberry32 } from './rng.js';
 import { goAround as simGoAround, outerAlt, replan, toRunway } from './sim.js';
 import { makePath } from './airspace.js';
+import { PARA } from './monitor.js';
 import { hasLine, pick, refusal } from './comms.js';
 import { PLACES, DIVERT_TO } from './places.js';
 import { pickFlow, weatherTick } from './wx-sean.js';
@@ -46,6 +47,9 @@ export function createSean(seed = 1) {
   const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
   const fexpo = (meanS) => -Math.log(1 - frng()) * meanS;
   let baseSpacingS = null;
+  let monitor = null; // the conformance monitor: the one place a loss of separation is decided
+  // The losses S.E.A.N. can see: the monitor's separation entries, from index i on.
+  const lossesFrom = (i) => (monitor ? monitor.violations.slice(i).filter((v) => v.para === PARA.SEP) : []);
   const sean = {
     feed: [], // { t, kind, text }, newest last
     credit: 0, // landings S.E.A.N. has taken credit for
@@ -55,8 +59,8 @@ export function createSean(seed = 1) {
     elsewhereSeen: 0,
     nextOutageT: 1500 + fexpo(2.5 * HOUR),
     billed: 0, // separation losses S.E.A.N. has invoiced as down payments
-    lossCursor: 0,
-    lossLast: new Map(), // callsign pair -> last tick that pair was in breach
+    lossCursor: 0, // index into the monitor's log: what has been billed
+    blameCursor: 0, // and what has been blamed
     shutdown: { on: false, startT: 0, stage: -1, acc: 0, requestedSeen: 0 },
     cutTotal: 0,
     nextFloppyT: 900 + fexpo(1.5 * HOUR),
@@ -68,7 +72,6 @@ export function createSean(seed = 1) {
     blimpsSent: 0,
     ufosSeen: 0,
     landedSeen: 0,
-    lossSeen: 0,
     lastBlameT: -Infinity,
     nextBlimpT: 600 + expo(3 * HOUR),
     nextUfoT: 600 + expo(2 * HOUR),
@@ -207,6 +210,9 @@ export function createSean(seed = 1) {
 
   const ctl = {
     sean,
+    attachMonitor(m) {
+      monitor = m;
+    },
 
     // Lets the UI add a line to the feed (an unlocked achievement).
     announce(sim, kind, text) {
@@ -261,15 +267,12 @@ export function createSean(seed = 1) {
 
       // The meter: every separation loss is another down payment. S.E.A.N. cannot see one while the scope is dark.
       if (!dark) {
-        for (; sean.lossCursor < sim.losses.length; sean.lossCursor++) {
-          const l = sim.losses[sean.lossCursor];
-          const key = [l.a, l.b].sort().join('|');
-          const last = sean.lossLast.get(key);
-          sean.lossLast.set(key, l.t);
-          if (last !== undefined && l.t - last <= 1.5) continue;
+        for (const l of lossesFrom(sean.lossCursor)) {
           sean.billed++;
-          lineF(sim, 'blame', 'bill', { a: l.a, b: l.b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
+          const [a, b] = l.names;
+          lineF(sim, 'blame', 'bill', { a, b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
         }
+        if (monitor) sean.lossCursor = monitor.violations.length;
       }
 
       // Shutdown mode: the cuts are made by deleting aircraft off the scope. Each cut counts as on time.
@@ -342,12 +345,13 @@ export function createSean(seed = 1) {
       }
 
       // S.E.A.N. cannot see a loss while the scope is dark, so the blame waits for the picture too.
-      if (sim.losses.length > sean.lossSeen && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
-        sean.lossSeen = sim.losses.length;
+      const fresh = lossesFrom(sean.blameCursor);
+      if (fresh.length && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
+        sean.blameCursor = monitor.violations.length;
         if (t - sean.lastBlameT > 90) {
           sean.lastBlameT = t;
-          const l = sim.losses.at(-1);
-          line(sim, 'blame', 'blame', { a: l.a, b: l.b });
+          const [a, b] = fresh.at(-1).names;
+          line(sim, 'blame', 'blame', { a, b });
         }
       }
 

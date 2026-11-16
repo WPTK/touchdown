@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, step } from '../src/sim.js';
-import { createMonitor, observe, PARA } from '../src/monitor.js';
+import { classBFloor, createMonitor, observe, PARA } from '../src/monitor.js';
 import { createWeather } from '../src/weather.js';
 import { SCENARIOS } from '../src/scenarios.js';
 
@@ -205,4 +205,37 @@ test('oracle: the safe controller breaks no rule with the PRM flag off', () => {
       assert.deepEqual(m.violations, [], `${flowWx ?? 'calm'} seed ${seed}: ${JSON.stringify(m.violations[0])}`);
     }
   }
+});
+
+test('91.117(c): over 200 kt under a Class B shelf fires; on the surface area, above a shelf or outside it does not', () => {
+  const under = plane({ x: 20, y: 0, alt: 2500, speedKt: 220 }); // the outline here has a 3,000 ft floor
+  const above = plane({ x: 20, y: 0, alt: 4000, speedKt: 220 });
+  const slow = plane({ x: 20, y: 0, alt: 2500, speedKt: 200 });
+  const outside = plane({ x: -45, y: -45, alt: 2500, speedKt: 240 });
+  const { sim, m } = rig(under, above, slow, outside);
+  assert.equal(classBFloor(20, 0), 3000);
+  assert.equal(classBFloor(0, 0), 0);
+  tick(sim, m);
+  const hits = of(m, PARA.SPEED_LIMIT);
+  assert.deepEqual(hits.map((v) => v.ids[0]), [under.id]);
+  assert.match(hits[0].title, /Class B/);
+});
+
+test('5-7-3: a speed order under the floor fires by type and distance; a blimp is exempt', () => {
+  const jetFar = plane({ phase: 'transit', x: -30, alt: 8000 });
+  const jetNear = plane({ phase: 'inner', x: 10, y: 0, alt: 3000 });
+  const jetNearOk = plane({ phase: 'inner', x: 12, y: 0, alt: 3500 });
+  const prop = plane({ phase: 'inner', x: 11, y: 0, alt: 3200, engine: 'turboprop' });
+  const blimp = plane({ phase: 'transit', kind: 'blimp', x: -35 });
+  const { sim, m } = rig(jetFar, jetNear, jetNearOk, prop, blimp);
+  for (const [a, left] of [[jetNear, 10], [jetNearOk, 12], [prop, 11]]) onRoute(sim, a, left);
+  sim.orders.push(
+    { t: 0, id: jetFar.id, kt: 190 }, // under 210 beyond 20 miles
+    { t: 0, id: jetNear.id, kt: 160 }, // under 170 within 20 miles
+    { t: 0, id: jetNearOk.id, kt: 170 },
+    { t: 0, id: prop.id, kt: 150 }, // a turboprop may go to 150
+    { t: 0, id: blimp.id, kt: 35 },
+  );
+  tick(sim, m);
+  assert.deepEqual(of(m, PARA.SPEED_MIN).map((v) => v.ids[0]).sort(), [jetFar.id, jetNear.id].sort());
 });

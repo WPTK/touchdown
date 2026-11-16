@@ -18,7 +18,7 @@ import { mulberry32 } from './rng.js';
 import { pickType, wakeMinNm } from './fleet.js';
 import { FLOWS, FLOW_HOLD_S, groundSpeed } from './weather.js';
 import { innerPath, makePath, missedFix, outerPath, holdFix, pointAt, rwId, sameWakeRunway, starsFor, RUNWAYS } from './airspace.js';
-import { lostSeparation, pairMargin } from './separation.js';
+import { lostSeparation } from './separation.js';
 
 const KT = 1 / 3600; // NM per second, per knot
 const EPS = 1e-6;
@@ -184,10 +184,7 @@ export function createSim({ seed = 1, demandPerHour = 24, config = {}, controlle
     outages: [], // stretches where the scope is dark: { startT, endT }. Traffic keeps moving.
     departures: [],
     lastDepartT: -Infinity,
-    losses: [],
     fuelOuts: [],
-    // Tightest pair seen: margin is 1 at the minimum that applies to the pair.
-    closest: { margin: Infinity, dh: Infinity, dv: Infinity, t: 0 },
     requested: 0,
   };
   setDemand(sim, demandPerHour);
@@ -624,7 +621,6 @@ export function step(sim, dt = 1) {
   }
 
   sim.t = t1;
-  checkSeparation(sim);
   sim.controller?.afterStep?.(sim, dt);
 }
 
@@ -633,23 +629,6 @@ export const toRunway = (a) => (a.route ? a.route.path.len - a.s : Math.hypot(a.
 
 // What the separation rules need to know about an aircraft: which runway it is on and whether it is established.
 export const sepView = (a) => ({ rwy: a.phase === 'inner' ? a.rwy : null, est: a.phase === 'inner' && !!a.route && a.s >= a.route.finalStartS - EPS });
-
-export function checkSeparation(sim) {
-  const { cfg, aircraft } = sim;
-  for (let i = 0; i < aircraft.length; i++) {
-    for (let j = i + 1; j < aircraft.length; j++) {
-      const a = aircraft[i];
-      const b = aircraft[j];
-      const dv = Math.abs(a.alt - b.alt);
-      const dh = Math.hypot(a.x - b.x, a.y - b.y);
-      const va = sepView(a);
-      const vb = sepView(b);
-      const margin = pairMargin(dh, dv, va, vb, cfg);
-      if (margin < sim.closest.margin) sim.closest = { margin, dh, dv, t: sim.t };
-      if (lostSeparation(dh, dv, va, vb, cfg)) sim.losses.push({ t: sim.t, a: a.callsign, b: b.callsign, dh, dv });
-    }
-  }
-}
 
 // Runs until nothing is waiting or airborne (demand should be 0), or until maxT.
 export function drain(sim, maxT = sim.t + 12 * 3600) {

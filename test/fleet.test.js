@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { APCH_CAT_KT, CWT_LETTERS, CWT_MIN_NM, FLEET, pickType, wakeMinNm } from '../src/fleet.js';
 import { mulberry32 } from '../src/rng.js';
 import { createSim, drain, step } from '../src/sim.js';
+import { losses, runWatched } from './helpers.js';
 
 test('wakeMinNm spot checks against TBL 5-5-4', () => {
   assert.equal(wakeMinNm('A', 'B'), 5);
@@ -83,9 +84,9 @@ test('landings on one runway are spaced by at least the wake minimum', () => {
   // Wake is per runway (5-5-4). At the stack's release rate a 5 NM minimum (112 s at 160 kt) never binds on its own,
   // so this checks the minimum holds, not that it was the reason for the gap.
   const sim = createSim({ seed: 9, demandPerHour: 40, config: { spacingS: 20 } });
-  while (sim.t < 3 * 3600) step(sim, 1);
-  assert.equal(drain(sim), true);
-  assert.deepEqual(sim.losses, []);
+  const { m, drained } = runWatched(sim, 3);
+  assert.equal(drained, true);
+  assert.deepEqual(losses(m), []);
   for (const rw of new Set(sim.landed.map((l) => l.rwy))) {
     const order = sim.landed.filter((l) => l.rwy === rw).sort((a, b) => a.landT - b.landT);
     for (let i = 1; i < order.length; i++) {

@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CONFIG, checkDesign, checkSeparation, createSim, drain, step } from '../src/sim.js';
+import { CONFIG, checkDesign, createSim, step } from '../src/sim.js';
+import { losses, runWatched } from './helpers.js';
 
 function runSeed(seed, demandPerHour, hours) {
   const sim = createSim({ seed, demandPerHour });
-  while (sim.t < hours * 3600) step(sim, 1);
-  const drained = drain(sim);
-  return { sim, drained };
+  const { m, drained } = runWatched(sim, hours);
+  return { sim, m, drained };
 }
 
 test('the default design passes every separation check', () => {
@@ -22,16 +22,6 @@ test('an unsafe config is refused', () => {
   assert.throws(() => createSim({ config: { levelStepFt: 500 } }), /unsafe config/);
 });
 
-test('the separation monitor catches a planted conflict', () => {
-  const sim = createSim({ seed: 1, demandPerHour: 0 });
-  sim.aircraft.push(
-    { callsign: 'TST1', x: 0, y: 0, alt: 5000 },
-    { callsign: 'TST2', x: 1, y: 0, alt: 5400 },
-  );
-  checkSeparation(sim);
-  assert.equal(sim.losses.length, 1);
-});
-
 for (const [label, demand, seeds] of [
   ['light traffic', 12, 40],
   ['at capacity', 24, 40],
@@ -39,13 +29,13 @@ for (const [label, demand, seeds] of [
 ]) {
   test(`everything lands, ${label}: ${seeds} seeds x 4 h`, () => {
     for (let seed = 1; seed <= seeds; seed++) {
-      const { sim, drained } = runSeed(seed, demand, 4);
+      const { sim, m, drained } = runSeed(seed, demand, 4);
       const ctx = `seed ${seed}, demand ${demand}/h`;
       assert.equal(drained, true, `${ctx}: traffic still airborne or waiting after drain`);
       assert.equal(sim.landed.length, sim.requested, `${ctx}: landed != requested`);
-      assert.deepEqual(sim.losses, [], `${ctx}: loss of separation`);
+      assert.deepEqual(losses(m), [], `${ctx}: loss of separation`);
       assert.deepEqual(sim.fuelOuts, [], `${ctx}: fuel exhaustion`);
-      assert.ok(sim.closest.margin >= 1 - 1e-6, `${ctx}: closest pair under minimum`);
+      assert.ok(m.closest.margin >= 1 - 1e-6, `${ctx}: closest pair under minimum`);
       // On one runway, landings are at least 3 NM of final apart: 3 NM at 160 kt is 67.5 s.
       for (const rw of new Set(sim.landed.map((l) => l.rwy))) {
         const lands = sim.landed.filter((l) => l.rwy === rw).map((l) => l.landT).sort((x, y) => x - y);

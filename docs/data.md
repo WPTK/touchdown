@@ -200,3 +200,16 @@ Not covered. A go-around climbs out to the missed approach fix and back to its h
 only watches released (inner) aircraft, so a go-around climbing through the stack, or across a final, is not checked
 against them, and the aircraft is not released from the hold fix until it has climbed to the base level. The safe
 controller does not fly go-arounds; S.E.A.N. does, and the monitor catches what comes of it.
+
+## Speed rules the monitor checks (`src/monitor.js`)
+
+- 5-7-1: no speed order inside the real FAF of the aircraft's own runway (or 5 NM, whichever is closer), none in a hold,
+  none beyond what the aircraft flies.
+- 5-7-3: an assigned speed on a turbojet is at least 210 kt, or 170 kt inside 20 flying miles of the runway. A turboprop
+  or piston is 200 kt, or 150 kt inside 20. Distance is the distance left on the route, not the straight line. At or
+  above 10,000 ft the floor is 250 kt. Blimps are exempt; the text has no paragraph for an airship. All 22 fleet types are
+  turbojets, so the turboprop floor is checked by a planted aircraft in the tests.
+- 14 CFR 91.117(a) and (c): 250 kt under 10,000 ft, and 200 kt in the airspace underlying a Class B area. The outline is
+  the FAA's Class_Airspace layer for ATL (`scripts/classb.js` writes `data/classb-atl.json`: 15 areas, 260 vertices
+  after a 0.1 NM simplification, in the same NM projection as the fixes). An aircraft is under a shelf when it is inside
+  its outline and below the lowest floor there; a floor of 0 is the surface area, which is inside the Class B itself.

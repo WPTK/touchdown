@@ -152,7 +152,7 @@ function updatePanel() {
     const wait = sim.landed.reduce((s, l) => s + (l.spawnT - l.requestT), 0) / sim.landed.length;
     $('wait').textContent = `${Math.round(wait / 60)} min`;
   }
-  const c = sim.closest;
+  const c = monitor.closest;
   $('closest').textContent = Number.isFinite(c.margin) ? `${c.dh.toFixed(1)} NM / ${Math.round(c.dv)} ft` : '–';
 
   const row = (tag, cls, time, ...parts) => {
@@ -178,7 +178,14 @@ function updatePanel() {
         return li;
       }),
   );
-  $('log').replaceChildren(
+  // Rebuild the log only when it has new lines, and keep the reader where they were: new rows go on top, so a scrolled
+  // list is moved down by the height they add.
+  const logEl = $('log');
+  if (logEl.dataset.n !== String(monitor.violations.length)) {
+    logEl.dataset.n = String(monitor.violations.length);
+    const was = logEl.scrollTop;
+    const heightWas = logEl.scrollHeight;
+    logEl.replaceChildren(
     ...monitor.violations
       .slice(-40)
       .reverse()
@@ -191,7 +198,9 @@ function updatePanel() {
         why.textContent = `${v.title}. ${v.detail}`;
         return row('li', '', v.t, p, why);
       }),
-  );
+    );
+    logEl.scrollTop = was > 0 ? was + (logEl.scrollHeight - heightWas) : 0;
+  }
 
   const m = meter(ctl.sean.billed);
   $('mTotal').textContent = `$${m.totalB.toFixed(1)}B`;

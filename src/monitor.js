@@ -8,11 +8,12 @@
 // and speed orders it cannot fly.
 
 import { sepView, toRunway } from './sim.js';
-import { lostSeparation } from './separation.js';
+import { lostSeparation, pairMargin } from './separation.js';
 import { sameWakeRunway } from './airspace.js';
 import { wakeMinNm } from './fleet.js';
 import { PLACES } from './places.js';
 import { CALM_KT, FLOWS, components } from './weather.js';
+import classB from '../data/classb-atl.json' with { type: 'json' };
 
 const EPS = 1e-6;
 const KT = 1 / 3600;
@@ -21,6 +22,7 @@ export const PARA = Object.freeze({
   SEP: '5-5-4 / 4-5-1',
   ALT: '5-5-5 b',
   SPEED_LIMIT: '14 CFR 91.117',
+  SPEED_MIN: '5-7-3',
   SPEED_ADJ: '5-7-1',
   WAKE: '5-5-4 wake',
   UAP: '9-8-1',
@@ -33,9 +35,42 @@ export const PARA = Object.freeze({
 // whichever is closer to the runway. The FAF is the real one for the aircraft's runway, from the approach data.
 export const noSpeedInsideNm = (a) => (a.route ? Math.min(a.route.fafDistNm, 5) : 5);
 
+// 14 CFR 91.117(c): no more than 200 kt in the airspace underlying a Class B area. An aircraft is underlying when it is
+// inside a shelf's outline and under the lowest floor over that spot (a floor of 0 is the surface area: inside the Class B).
+// The outlines are the FAA's, from data/classb-atl.json (scripts/classb.js).
+const inRing = (ring, x, y) => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+};
+export function classBFloor(x, y) {
+  let floor = Infinity;
+  for (const a of classB.areas) if (a.floorFt < floor && inRing(a.ring, x, y)) floor = a.floorFt;
+  return floor;
+}
+const underlyingClassB = (a) => {
+  const floor = classBFloor(a.x, a.y);
+  return floor > 0 && floor !== Infinity && a.alt < floor;
+};
+
+// 5-7-3 speed floors on an assigned speed, by what the aircraft is. Turbojets and turboprops only; there is no paragraph for an airship.
+export function minAssignedKt(a, distNm) {
+  if (a.kind === 'blimp') return 0;
+  const jet = (a.engine ?? 'jet') === 'jet';
+  const near = distNm < 20;
+  if (a.alt >= 10000) return 250; // FL280 to 10,000 ft
+  return jet ? (near ? 170 : 210) : near ? 150 : 200;
+}
+
 export function createMonitor() {
   return {
     violations: [],
+    // Tightest pair seen: margin is 1 at the minimum that applies to the pair (the parallel-approach rule on adjacent finals).
+    closest: { margin: Infinity, dh: Infinity, dv: Infinity, t: 0 },
     counts: {},
     active: new Map(), // key -> violation, for breaches still going on
     targets: new Map(), // aircraft id -> assigned altitude, last tick
@@ -54,8 +89,8 @@ export function createMonitor() {
   };
 }
 
-function log(m, t, para, title, ids, detail) {
-  const v = { t, para, title, ids, detail };
+function log(m, t, para, title, ids, detail, extra = {}) {
+  const v = { t, para, title, ids, detail, ...extra };
   if (m.darkSince !== null) {
     m.held.push(v); // the scope is dark: it goes in the log when the picture comes back
     return v;
@@ -91,14 +126,15 @@ const name = (a) => a.callsign ?? `target ${a.id}`;
 
 export function observe(m, sim) {
   const { t, aircraft, cfg } = sim;
+  sim.controller?.attachMonitor?.(m); // the controller reads losses from here, so there is one source for them
   const dark = sim.outages.some((o) => t >= o.startT && t < o.endT);
   if (dark && m.darkSince === null) m.darkSince = sim.outages.find((o) => t >= o.startT && t < o.endT).startT;
   if (!dark && m.darkSince !== null) surface(m, t);
   const byId = new Map(aircraft.map((a) => [a.id, a]));
   const seen = new Set();
-  const flag = (key, para, title, ids, detail) => {
+  const flag = (key, para, title, ids, detail, extra) => {
     seen.add(key);
-    if (!m.active.has(key)) m.active.set(key, log(m, t, para, title, ids, detail));
+    if (!m.active.has(key)) m.active.set(key, log(m, t, para, title, ids, detail, extra));
   };
 
   // 5-5-4 and 4-5-1: lateral and vertical minima lost together.
@@ -108,6 +144,8 @@ export function observe(m, sim) {
       const b = aircraft[j];
       const dv = Math.abs(a.alt - b.alt);
       const dh = Math.hypot(a.x - b.x, a.y - b.y);
+      const margin = pairMargin(dh, dv, sepView(a), sepView(b), cfg);
+      if (margin < m.closest.margin) m.closest = { margin, dh, dv, t };
       if (lostSeparation(dh, dv, sepView(a), sepView(b), cfg)) {
         flag(
           `sep:${Math.min(a.id, b.id)}:${Math.max(a.id, b.id)}`,
@@ -115,8 +153,22 @@ export function observe(m, sim) {
           'Separation minima lost',
           [a.id, b.id],
           `${name(a)} and ${name(b)}: ${dh.toFixed(1)} NM and ${Math.round(dv)} ft apart; ${cfg.latSepNm} NM or ${cfg.vertSepFt} ft required (or the parallel-approach minimum when both are established on adjacent finals)`,
+          { names: [name(a), name(b)] },
         );
       }
+    }
+  }
+
+  // 14 CFR 91.117(c): no more than 200 kt under a Class B shelf.
+  for (const a of aircraft) {
+    if (a.speedKt > 200 + 0.5 && underlyingClassB(a)) {
+      flag(
+        `classb:${a.id}`,
+        PARA.SPEED_LIMIT,
+        'Over 200 kt under Class B',
+        [a.id],
+        `${name(a)} at ${Math.round(a.speedKt)} kt, ${Math.round(a.alt)} ft, under the Class B shelf (91.117(c))`,
+      );
     }
   }
 
@@ -196,6 +248,10 @@ export function observe(m, sim) {
         [a.id],
         `${name(a)} told to fly ${Math.round(o.kt)} kt ${dist.toFixed(1)} NM from the runway; none inside ${limit.toFixed(1)} NM`,
       );
+    }
+    const floor = minAssignedKt(a, dist);
+    if (a.kind !== 'blimp' && (phase === 'inner' || phase === 'transit') && o.kt < floor) {
+      log(m, t, PARA.SPEED_MIN, 'Assigned speed under the 5-7-3 minimum', [a.id], `${name(a)} told to fly ${Math.round(o.kt)} kt; ${floor} kt is the least for this aircraft ${dist.toFixed(0)} NM from the runway`);
     }
     if (o.kt > (a.maxKt ?? Infinity) || o.kt < (a.minKt ?? 0)) {
       log(

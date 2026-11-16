@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, drain, step } from '../src/sim.js';
+import { losses, runWatched } from './helpers.js';
+import { createMonitor, observe } from '../src/monitor.js';
 import {
   chooseFlow, components, createWeather, flightCategory, groundSpeed, LLWS_HOLD_S, parseMetar, parseTaf, windComponents,
 } from '../src/weather.js';
@@ -10,9 +12,11 @@ const near = (a, b, eps = 0.01) => assert.ok(Math.abs(a - b) < eps, `${a} is not
 
 const synthetic = (id, metars) => ({ id, name: id, metars });
 
+// Runs with the monitor watching; the monitor stays on sim.watch so a test can ask it about losses.
 function run(sim, hours) {
-  while (sim.t < hours * 3600) step(sim, 1);
-  return drain(sim);
+  const r = runWatched(sim, hours);
+  sim.watch = r.m;
+  return r.drained;
 }
 
 test('every committed METAR parses, and the four real days have the weather they were picked for', () => {
@@ -191,7 +195,7 @@ test('wind on final changes groundspeed and the landing gap follows it', () => {
   // The probe flies each release forward with the wind in it, so the gap on a runway is 3 NM at the groundspeed on final:
   // 77 s at 140 kt, not the 68 s it is at 160 kt.
   run(sh, 3);
-  assert.equal(sh.losses.length, 0);
+  assert.equal(losses(sh.watch).length, 0);
   assert.ok(sh.landed.length > 20);
   for (const rw of new Set(sh.landed.map((l) => l.rwy))) {
     const times = sh.landed.filter((l) => l.rwy === rw).map((l) => l.landT).sort((a, b) => a - b);
@@ -213,8 +217,10 @@ test('a wind shift turns the runway around, the airspace drains first, and nothi
   const sim = createSim({ seed: 5, demandPerHour: 24, weather: w });
   assert.equal(sim.flow, 'west');
   let sawChangeover = false;
+  const mon = createMonitor();
   while (sim.t < 4 * 3600) {
     step(sim, 1);
+    observe(mon, sim);
     if (sim.changeover) sawChangeover = true;
   }
   assert.equal(sim.flow, 'east');
@@ -223,8 +229,8 @@ test('a wind shift turns the runway around, the airspace drains first, and nothi
   assert.ok(sim.flowChanges[0].t >= 2 * 3600 + 600);
   assert.deepEqual(sim.geo.runways.map((r) => r.ident), ['08L', '09R', '10']);
   assert.equal(sim.geo.flow, 'east');
-  assert.equal(drain(sim), true);
-  assert.equal(sim.losses.length, 0);
+  assert.equal(runWatched(sim, 0, mon).drained, true);
+  assert.equal(losses(mon).length, 0);
   assert.equal(sim.fuelOuts.length, 0);
 });
 
@@ -234,7 +240,7 @@ test('the safe controller keeps zero separation losses and lands everything in e
       const sim = createSim({ seed, demandPerHour: 30, weather: createWeather({ scenario: sc, seed }) });
       const drained = run(sim, 4);
       assert.equal(drained, true, `${sc.id} seed ${seed} drains`);
-      assert.equal(sim.losses.length, 0, `${sc.id} seed ${seed}: ${JSON.stringify(sim.losses[0])}`);
+      assert.equal(losses(sim.watch).length, 0, `${sc.id} seed ${seed}: ${JSON.stringify(losses(sim.watch)[0])}`);
       assert.equal(sim.landed.length, sim.requested, `${sc.id} seed ${seed} lands everything`);
     }
   }
@@ -250,5 +256,5 @@ test('calm weather changes nothing: no weather and a calm METAR give the same la
   run(a, 3);
   run(b, 3);
   assert.deepEqual(b.landed, a.landed);
-  assert.equal(b.losses.length, 0);
+  assert.equal(losses(b.watch).length, 0);
 });
