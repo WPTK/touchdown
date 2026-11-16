@@ -43,14 +43,15 @@ export const WORDS_PER_S = 2.5;
 export const KEY_UP_S = 1;
 export const airtime = (text) => KEY_UP_S + text.split(/\s+/).length / WORDS_PER_S;
 
+const NOT_RADIO = new Set(['brag', 'blame', 'atis', 'brief']);
+
 export function congestion(seanFeed, t, windowS = 120) {
   let busy = 0;
   let n = 0;
   for (let i = seanFeed.length - 1; i >= 0; i--) {
     const f = seanFeed[i];
     if (f.t < t - windowS) break;
-    const sp = speakerOf(f.kind);
-    if (f.kind === 'brag' || f.kind === 'blame' || sp === 'monitor') continue; // those are press releases, not radio
+    if (NOT_RADIO.has(f.kind)) continue; // press releases and the ATIS (its own frequency) are not this one
     busy += airtime(f.text);
     n++;
   }

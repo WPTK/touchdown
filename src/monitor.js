@@ -30,6 +30,7 @@ export const PARA = Object.freeze({
   OUTAGE: 'scope outage', // not a paragraph: what happened while the scope was dark
   RWY: '3-5-1',
   READBACK: '2-4-3', // the controller ensures the items read back are correct
+  ATIS: '2-9-2', // the controller ensures pilots have the current ATIS
 });
 
 // 5-7-1: no speed adjustment inside the final approach fix on final or a point 5 miles from the runway,
@@ -87,7 +88,7 @@ export function createMonitor() {
     held: [],
     landedCursor: 0,
     elsewhereCursor: 0,
-    readbackCursor: 0,
+    lapseCursor: 0,
   };
 }
 
@@ -309,11 +310,11 @@ export function observe(m, sim) {
     }
   }
 
-  // 2-4-3: when a pilot reads a clearance back, ensure the items read back are correct. Each wrong readback the
-  // controller let stand is logged once.
-  for (; m.readbackCursor < sim.readbacks.length; m.readbackCursor++) {
-    const r = sim.readbacks[m.readbackCursor];
-    log(m, t, PARA.READBACK, 'Readback error not corrected', [], `${r.callsign} read back "${r.said}" for "${r.expected}", and the controller said it was correct`);
+  // What a controller let slide that a rule says it must catch, logged once each: a wrong readback (2-4-3) or an ATIS
+  // code that is not current (2-9-2). The controller records them in sim.lapses.
+  for (; m.lapseCursor < sim.lapses.length; m.lapseCursor++) {
+    const l = sim.lapses[m.lapseCursor];
+    log(m, t, l.para, l.title, [], l.detail);
   }
 
   // Where each one actually came down. Not a 7110.65 matter, so it is a ledger and not a violation.

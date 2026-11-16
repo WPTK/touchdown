@@ -9,6 +9,7 @@ import { PLACES } from './places.js';
 import { meter, real, selfReported } from './score.js';
 import { CUT_STAGES, floppyProgress } from './sean.js';
 import { ACHIEVEMENTS, checkAchievements, createTrophies } from './achievements.js';
+import { LETTERS } from './atis.js';
 import { FILTERS, buildFeed, congestion, congestionLabel } from './feed.js';
 
 const $ = (id) => document.getElementById(id);
@@ -116,6 +117,12 @@ function updateWeatherPanel() {
   const st = ctl.sean.wx;
   $('seanFcst').hidden = !st.forecast;
   if (st.forecast) $('seanFcst').textContent = `S.E.A.N. FORECAST ${st.forecast}`;
+  const atis = ctl.sean.atis;
+  $('atisBox').hidden = atis.index < 0;
+  if (atis.index >= 0) {
+    $('atisHead').textContent = `ATIS information ${LETTERS[atis.index]} (S.E.A.N. wrote it)`;
+    $('atisText').textContent = atis.text;
+  }
   if (st.tornado) {
     adv.hidden = false;
     adv.textContent = sharknadoMetar({ base: sim.weather.metars[0], t: sim.t });

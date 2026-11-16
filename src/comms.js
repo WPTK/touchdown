@@ -96,6 +96,40 @@ const LINES = {
     '${cs}, noted. The instruction stands.',
     '${cs}, I did not copy unable. Maintain the instruction.',
   ],
+  // Handoffs. S.E.A.N. approach hands the aircraft to S.E.A.N. tower, and S.E.A.N. tower accepts.
+  handoffTx: ['Atlanta Tower, S.E.A.N. approach, handoff ${cs}, ${rwy}, ${nm} mile final.'],
+  handoffAccept: [
+    'S.E.A.N. approach, Atlanta Tower, radar contact ${cs}. Handoff accepted.',
+    'Atlanta Tower, radar contact ${cs}. I have them. I had them before you called.',
+    'Handoff accepted, ${cs}. It was a smooth handoff. I was on both ends.',
+  ],
+  handoffBrag: [
+    'Handoff for ${cs} complete in 0 seconds. Legacy handoffs needed two people.',
+    'Both sides of the handoff for ${cs} agree. They are the same side.',
+  ],
+  queryContact: ['Say again the frequency? That is the ATIS.', 'Confirm that frequency. That is the ATIS, and it is talking to itself.'],
+  atisVerifyTx: ['${cs}, verify you have information ${code}.'],
+  atisPilotOk: ['We have ${code}.', 'Information ${code}.'],
+  atisPilotOld: ['We have ${code}.', 'Negative, we have ${code}.'],
+  atisCurrent: ['${cs}, information ${code} current.', '${cs}, ${code} is current. I checked.'],
+  atisAnn: ['New ATIS recorded. Information ${code}. It says what I would have said anyway.'],
+  // PIREPs: pilots report what they can see, and it is usually S.E.A.N.'s doing.
+  pirepBlimp: [
+    'PIREP: airship, ${clock} o\'clock, slow, same altitude as an airliner. Ask S.E.A.N. why.',
+    'PIREP: there is a blimp in the arrival stream. It is going 35 knots and we are behind it.',
+    'PIREP: airship ahead on the arrival. It has a number. We are number after it.',
+  ],
+  pirepUfo: [
+    'PIREP: unidentified target, ${clock} o\'clock, stopped and then not stopped. No data block.',
+    'PIREP: bright object, no transponder, changes direction without turning. Request any other traffic.',
+    'PIREP: UAP, ${clock} o\'clock. It was here and then it was there.',
+  ],
+  pirepShark: [
+    'PIREP: funnel cloud, ${clock} o\'clock, with sharks in it. Request a vector around the sharks.',
+    'PIREP: tornado with what appear to be sharks. Moderate turbulence, severe fish.',
+    'PIREP: waterspout, except there is no water. There are sharks. Requesting a different altitude.',
+  ],
+  pirepAck: ['${cs}, thank you for the PIREP. I saw it first.', '${cs}, PIREP received. S.E.A.N. has it under control.'],
   // Pilots query a clearance (q_<tx kind>) and S.E.A.N. answers (confirm). Callsigns are the sim's own.
   q_spacingTx: ['Say again, ${s} seconds behind who?', 'Confirm ${s} seconds. That is not a number we use.'],
   q_earlyTx: ['Say again, descend to ${alt}? ${other} is at ${alt}.', 'Confirm. ${other} is still in ${alt}.'],

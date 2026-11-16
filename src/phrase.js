@@ -95,6 +95,7 @@ const RENDER = {
   approach: (c) => `${c.fix ? `at ${c.fix}, ` : ''}cleared ILS ${runway(c.rwy)} approach`,
   land: (c) => `${runway(c.rwy)}, cleared to land`,
   goAround: () => 'go around',
+  contact: (c) => `contact ${c.facility} ${frequency(c.freq)}`,
 };
 
 // The pilot's version: the items, then the call sign.
@@ -108,6 +109,7 @@ const READBACK = {
   approach: (c) => `${c.fix ? `at ${c.fix}, ` : ''}cleared ILS ${runway(c.rwy)} approach`,
   land: (c) => `${runway(c.rwy)}, cleared to land`,
   goAround: () => 'going around',
+  contact: (c) => `contact ${c.facility} ${frequency(c.freq)}`,
 };
 
 export const KINDS = Object.freeze(Object.keys(RENDER));
@@ -134,6 +136,8 @@ export function misread(c, rng) {
       if (!m) return null;
       return { ...c, rwy: `${m[1]}${m[2] === 'L' ? 'R' : 'L'}` };
     }
+    case 'contact':
+      return { ...c, freq: (Number(c.freq) + (r < 0.5 ? -0.2 : 0.2)).toFixed(c.freq.split('.')[1]?.length ?? 1) };
     case 'hold':
       return c.efc ? { ...c, efc: String(Number(c.efc) + 10).padStart(4, '0') } : null;
     default:

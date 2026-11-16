@@ -1,0 +1,10 @@
+{
+  "source": "FAA NASR 28-day subscription effective 2026-10-29, TWR.txt, TWR3 records for ATL (https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/)",
+  "facility": "Atlanta Tower",
+  "tower": {
+    "8L": "119.1", "26R": "119.1",
+    "9R": "119.3", "27L": "119.3",
+    "10": "119.5", "28": "119.5"
+  },
+  "atis": { "arrival": "119.65", "departure": "125.55" }
+}
