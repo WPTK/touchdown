@@ -288,7 +288,8 @@ export function createSean(seed = 1) {
         line(sim, 'brag', 'landing', { cs: l.callsign, n: sean.credit, pct: 12 + Math.floor(rng() * 380) });
       }
 
-      if (sim.losses.length > sean.lossSeen) {
+      // S.E.A.N. cannot see a loss while the scope is dark, so the blame waits for the picture too.
+      if (sim.losses.length > sean.lossSeen && !sim.outages.some((o) => t >= o.startT && t < o.endT)) {
         sean.lossSeen = sim.losses.length;
         if (t - sean.lastBlameT > 90) {
           sean.lastBlameT = t;

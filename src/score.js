@@ -47,6 +47,6 @@ export function real(sim, monitor, sean) {
     goArounds: sean.goArounds,
     losses: monitor.counts[PARA.SEP] || 0,
     fuelOuts: sim.fuelOuts.length,
-    violations: monitor.violations.length,
+    violations: monitor.violations.filter((v) => v.para !== PARA.OUTAGE).length, // the outage entry is not a violation
   };
 }

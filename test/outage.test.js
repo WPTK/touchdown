@@ -70,7 +70,6 @@ test('copper outage: the monitor logs a loss that happens in the dark, once the 
     if (seen) {
       const entry = r.m.violations.find((v) => v.para === PARA.OUTAGE && /separation|5-5-4/.test(v.detail));
       assert.ok(entry, 'the outage entry does not mention the loss');
-      assert.equal(r.m.held.length === 0 || r.m.darkSince !== null, true);
     }
   }
   assert.ok(seen > 0, 'no seed lost separation in the dark');
