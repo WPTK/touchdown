@@ -91,7 +91,7 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   // Range rings every 10 NM.
   ctx.strokeStyle = 'rgba(110, 190, 140, 0.16)';
   ctx.lineWidth = 1;
-  for (let r = 10; r <= 50; r += 10) {
+  for (let r = 10; r <= 40; r += 10) {
     ctx.beginPath();
     ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
     ctx.stroke();
@@ -101,8 +101,6 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
 
   // Class B: the FAA's outline of each shelf, faint.
   ctx.strokeStyle = 'rgba(120, 150, 255, 0.2)';
-  ctx.fillStyle = 'rgba(140, 165, 255, 0.4)';
-  ctx.font = '9px ui-monospace, "Cascadia Mono", Consolas, monospace';
   for (const area of classB.areas) {
     ctx.beginPath();
     area.ring.forEach(([x, y], k) => (k ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
@@ -122,7 +120,7 @@ export function drawScope(ctx, sim, trails, { width, height, tornado = null }) {
   };
   const named = new Map();
   const name = (v, role) => {
-    if (v.id && !named.has(v.id)) named.set(v.id, { x: v.x, y: v.y, role });
+    if (v.id && (!named.has(v.id) || (role === 'faf' && named.get(v.id).role !== 'faf'))) named.set(v.id, { x: v.x, y: v.y, role });
   };
   for (const star of Object.values(sim.geo.stars)) {
     for (const o of Object.values(star.outer)) {
