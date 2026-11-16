@@ -8,7 +8,8 @@ import { createMonitor, observe, PARA } from './monitor.js';
 import { PLACES } from './places.js';
 import { meter, real, selfReported } from './score.js';
 import { CUT_STAGES, floppyProgress } from './sean.js';
-import { ACHIEVEMENTS, checkAchievements, createTrophies } from './achievements.js';
+import { ACHIEVEMENTS, createTrophies, runAchievements, trophyRow } from './achievements.js';
+import { createStore } from './storage.js';
 import { LETTERS } from './atis.js';
 import { FILTERS, buildFeed, congestion, congestionLabel } from './feed.js';
 
@@ -25,6 +26,7 @@ let ctl;
 let monitor;
 let trails;
 let trophies;
+const store = createStore(); // the trophy case, kept across visits when the browser allows it
 let paused = false;
 const filters = new Set(FILTERS);
 let carry = 0;
@@ -227,16 +229,20 @@ function updatePanel() {
     $('floppyText').textContent = `A:\\ D.U.F.F.Y. ${fp.version}, disk ${fp.disk} of 3, ${fp.pct}%`;
   }
   const points = truth.violations;
-  $('score').textContent = `${points} ${points === 1 ? 'point' : 'points'} (one per logged violation), ${trophies.unlocked.size} of ${ACHIEVEMENTS.length} achievements`;
+  const kept = ACHIEVEMENTS.filter((x) => store.has(x.id) || trophies.unlocked.has(x.id)).length;
+  $('score').textContent = `${points} ${points === 1 ? 'point' : 'points'} (one per logged violation), ${kept} of ${ACHIEVEMENTS.length} trophies${store.persistent ? ', kept on this browser' : ''}`;
   $('trophies').replaceChildren(
     ...ACHIEVEMENTS.map((a) => {
+      const row = trophyRow(a, { unlockedNow: trophies.unlocked.has(a.id), ever: store.has(a.id) });
       const li = document.createElement('li');
-      const got = trophies.unlocked.has(a.id);
-      li.className = got ? 'got' : '';
-      li.append(got ? a.title : '???');
-      const s = document.createElement('span');
-      s.textContent = got ? a.blurb : a.hint;
-      li.append(s);
+      li.className = [row.got ? 'got' : '', row.now ? 'now' : '', row.self ? 'self' : ''].join(' ').trim();
+      li.append(row.title);
+      if (row.self) li.append(' (S.E.A.N. gave this to itself)');
+      if (row.text) {
+        const s = document.createElement('span');
+        s.textContent = row.text;
+        li.append(s);
+      }
       return li;
     }),
   );
@@ -294,10 +300,7 @@ function frame(now) {
     }
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
   }
-  for (const a of checkAchievements(trophies, { sim, monitor, sean: ctl.sean })) {
-    toast(a.title, a.pride);
-    ctl.announce(sim, 'brag', `Achievement unlocked: ${a.title}. ${a.pride}`);
-  }
+  for (const a of runAchievements({ trophies, ctx: { sim, monitor, sean: ctl.sean }, ctl, store }).firsts) toast(a.title, a.pride);
   const { width, height } = canvas.getBoundingClientRect();
   drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null });
   if (now - lastPanel > 250) {
