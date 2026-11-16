@@ -17,6 +17,17 @@ export function selfReported(sean) {
   };
 }
 
+// The meter. The first $12.5B was the real down payment, the $30B is the real ask, and S.E.A.N. invoices every
+// separation loss as one more down payment. Its project schedule is one line long.
+export const DOWN_PAYMENT_B = 12.5;
+export const ASK_B = 30;
+export const GAO_SCHEDULES = 11389;
+
+export function meter(billed) {
+  const payments = 1 + billed;
+  return { payments, totalB: DOWN_PAYMENT_B * payments, askB: ASK_B, gaoSchedules: GAO_SCHEDULES, seanSchedules: 1, due: 'now' };
+}
+
 export function real(sim, monitor, sean) {
   const landed = sim.landed.length;
   const elsewhere = sim.elsewhere.length;

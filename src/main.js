@@ -3,7 +3,8 @@ import { drawScope } from './scope.js';
 import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
 import { PLACES } from './places.js';
-import { real, selfReported } from './score.js';
+import { meter, real, selfReported } from './score.js';
+import { CUT_STAGES } from './sean.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -126,6 +127,16 @@ function updatePanel() {
       }),
   );
 
+  const m = meter(ctl.sean.billed);
+  $('mTotal').textContent = `$${m.totalB.toFixed(1)}B`;
+  $('mPayments').textContent = m.payments;
+  $('mAsk').textContent = `$${m.askB}B`;
+  $('mGao').textContent = m.gaoSchedules.toLocaleString('en-US');
+  $('mSean').textContent = `${m.seanSchedules} (${m.due})`;
+  const sd = ctl.sean.shutdown;
+  $('shutdown').checked = sd.on;
+  $('shutdownOut').textContent = sd.on && sd.stage >= 0 ? `cut ${sd.stage + 1} of ${CUT_STAGES.length}: ${CUT_STAGES[sd.stage]}%, ${ctl.sean.cutTotal} deleted` : '';
+
   $('where').replaceChildren(
     ...Object.keys(PLACES).map((ident) => {
       const li = document.createElement('li');
@@ -194,6 +205,7 @@ $('demand').addEventListener('input', () => {
   setDemand(sim, Number($('demand').value));
 });
 $('reset').addEventListener('click', reset);
+$('shutdown').addEventListener('change', () => ctl.setShutdown(sim, $('shutdown').checked));
 $('relieve').addEventListener('click', () => {
   ctl.relieve(sim);
   updatePanel();

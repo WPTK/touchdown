@@ -68,10 +68,22 @@
           <input id="demand" type="range" min="0" max="60" step="1" value="24">
         </label>
         <button id="relieve" type="button">Relieve S.E.A.N.</button>
+        <label class="check"><input id="shutdown" type="checkbox"> Shutdown mode <output id="shutdownOut"></output></label>
         <div class="row">
           <label>Seed <input id="seed" type="number" min="1" value="1"></label>
           <button id="reset" type="button">Reset</button>
         </div>
+      </section>
+
+      <section class="meter" aria-live="polite">
+        <h2>The meter</h2>
+        <dl class="stats">
+          <dt>Spent</dt><dd id="mTotal">$12.5B</dd>
+          <dt>Down payments</dt><dd id="mPayments">1</dd>
+          <dt>Next ask</dt><dd id="mAsk">$30B</dd>
+          <dt>GAO: project schedules</dt><dd id="mGao">11,389</dd>
+          <dt>S.E.A.N.: project schedule</dt><dd id="mSean">1 (now)</dd>
+        </dl>
       </section>
 
       <section>

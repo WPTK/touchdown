@@ -89,6 +89,9 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .counts .para { color: var(--alert); }
 
 .controls #relieve { border-color: var(--alert); color: var(--alert); }
+.check { display: flex; gap: 8px; align-items: center; }
+.check output { color: var(--hold); font-size: 12px; }
+.meter dd { color: var(--hold); }
 .where li { color: var(--text); }
 .where .para { color: var(--inner); }
 

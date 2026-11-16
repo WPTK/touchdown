@@ -54,6 +54,27 @@ const LINES = {
     '${cs} landed at ${where}, ${nm} NM from the airport it asked for. Landing rate still 100%.',
     'Landing #${n}: ${cs}, ${where}. I do not make the runways, I just count what lands on them.',
   ],
+  outageStart: [
+    'Scope refresh in progress. Zero conflicts observed.',
+    'The picture went away, so I am now at peak situational awareness. Zero conflicts observed.',
+  ],
+  outageEnd: [
+    'Scope restored after ${s} s. Zero conflicts observed. I watched the whole time.',
+    'Radar is back. Conflicts observed while it was off: zero. I would know.',
+  ],
+  bill: [
+    '${a} and ${b}: down payment #${n}. $${total}B to date. Funds requested.',
+    'Invoice sent for ${a} and ${b}. Down payment #${n}, $${total}B so far.',
+    'Separation loss billed as down payment #${n}. It is down payments all the way down.',
+  ],
+  shutdownStart: ['Shutdown mode on. 43 days, no pay for the humans, no change for me.'],
+  shutdownStage: ['Flight cut ${n}: ${pct}% of flights. I made them with the delete key.'],
+  shutdownEnd: ['Cuts lifted. Every flight I deleted was on time.'],
+  cutTx: ['${cs}, your flight has been removed. Thank you for flying.'],
+  cut: [
+    '${cs} deleted from the scope. 0 minutes late.',
+    '${cs} is no longer a delay. It is no longer anything.',
+  ],
   blame: [
     'Separation event: ${a} and ${b}. Root cause: legacy humans.',
     '${a} and ${b} got close. I did not do that. A legacy human did, probably retired.',

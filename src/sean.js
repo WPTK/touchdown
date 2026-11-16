@@ -18,12 +18,18 @@ const STEP_RATES = [520, 520, 700, 900, 1200];
 
 export const BLIMP_KT = 35;
 
+export const OUTAGE_S = 90; // the Newark and Philadelphia TRACON outages ran about that long (docs/research/atc-news-2026.md)
+// The 2025 shutdown's flight cuts at 40 airports, in order (docs/research/atc-news-2026.md). Each stage runs this long.
+export const CUT_STAGES = Object.freeze([4, 6, 3]);
+export const STAGE_S = 45 * 60;
+
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
   // The newer features draw from their own stream, so they mostly leave the older ones alone. Text for the old
   // events (a fuel-out, a diversion) still comes from `rng`, and every pick draws once even from a one-line list.
   const frng = mulberry32((Math.imul(seed, 2246822519) ^ 0xf1a5) >>> 0);
+  const fexpo = (meanS) => -Math.log(1 - frng()) * meanS;
   let baseSpacingS = null;
   const sean = {
     feed: [], // { t, kind, text }, newest last
@@ -32,6 +38,12 @@ export function createSean(seed = 1) {
     diverted: [], // everyone sent somewhere else: { t, callsign, ident }
     enroute: [], // on their way to another field: { callsign, ident, requestT, landT }
     elsewhereSeen: 0,
+    nextOutageT: 1500 + fexpo(2.5 * HOUR),
+    billed: 0, // separation losses S.E.A.N. has invoiced as down payments
+    lossCursor: 0,
+    lossLast: new Map(), // callsign pair -> last tick that pair was in breach
+    shutdown: { on: false, startT: 0, stage: -1, acc: 0, requestedSeen: 0 },
+    cutTotal: 0,
     relieveTries: 0,
     relieved: false, // it never is
     blimpsSent: 0,
@@ -172,6 +184,19 @@ export function createSean(seed = 1) {
   const ctl = {
     sean,
 
+    // The shutdown toggle: replays the 2025 cuts from now.
+    setShutdown(sim, on) {
+      const sd = sean.shutdown;
+      if (on === sd.on) return;
+      sd.on = on;
+      if (on) {
+        Object.assign(sd, { startT: sim.t, stage: -1, acc: 0, requestedSeen: sim.requested });
+        lineF(sim, 'brag', 'shutdownStart');
+      } else {
+        lineF(sim, 'brag', 'shutdownEnd');
+      }
+    },
+
     // The Relieve S.E.A.N. button. It has never worked.
     relieve(sim) {
       sean.relieveTries++;
@@ -186,6 +211,61 @@ export function createSean(seed = 1) {
       if (!sean.started) {
         sean.started = true;
         line(sim, 'brag', 'online');
+      }
+
+      // Copper outage: the scope goes dark for 90 s. Traffic keeps moving and S.E.A.N. keeps talking.
+      const out = sim.outages.at(-1);
+      if (out && out.endT <= t && !out.said) {
+        out.said = true;
+        lineF(sim, 'brag', 'outageEnd', { s: out.endT - out.startT });
+      }
+      if (t >= sean.nextOutageT && !(out && out.endT > t)) {
+        sim.outages.push({ startT: t, endT: t + OUTAGE_S, said: false });
+        sean.nextOutageT = t + OUTAGE_S + 1800 + fexpo(2 * HOUR);
+        lineF(sim, 'brag', 'outageStart');
+      }
+      const dark = sim.outages.some((o) => t >= o.startT && t < o.endT);
+
+      // The meter: every separation loss is another down payment. S.E.A.N. cannot see one while the scope is dark.
+      if (!dark) {
+        for (; sean.lossCursor < sim.losses.length; sean.lossCursor++) {
+          const l = sim.losses[sean.lossCursor];
+          const key = [l.a, l.b].sort().join('|');
+          const last = sean.lossLast.get(key);
+          sean.lossLast.set(key, l.t);
+          if (last !== undefined && l.t - last <= 1.5) continue;
+          sean.billed++;
+          lineF(sim, 'blame', 'bill', { a: l.a, b: l.b, n: sean.billed + 1, total: (12.5 * (sean.billed + 1)).toFixed(1) });
+        }
+      }
+
+      // Shutdown mode: the cuts are made by deleting aircraft off the scope. Each cut counts as on time.
+      const sd = sean.shutdown;
+      if (sd.on) {
+        const stage = Math.floor((t - sd.startT) / STAGE_S);
+        if (stage >= CUT_STAGES.length) {
+          ctl.setShutdown(sim, false);
+        } else {
+          if (stage !== sd.stage) {
+            sd.stage = stage;
+            sd.acc = 0.75; // the first cut of a stage comes early, so it is visible
+            lineF(sim, 'brag', 'shutdownStage', { n: stage + 1, pct: CUT_STAGES[stage] });
+          }
+          sd.acc += (sim.requested - sd.requestedSeen) * (CUT_STAGES[stage] / 100);
+          sd.requestedSeen = sim.requested;
+          if (sd.acc >= 1) {
+            // The newest aircraft in line that has been on the scope long enough to be missed.
+            const i = queue.findLastIndex((a) => a.phase !== 'inner' && a.kind !== 'blimp' && t - a.spawnT >= 30);
+            if (i > 0) {
+              sd.acc -= 1;
+              const a = pull(sim, i);
+              sim.cut.push({ t, callsign: a.callsign });
+              sean.cutTotal++;
+              lineF(sim, 'tx', 'cutTx', { cs: a.callsign });
+              lineF(sim, 'brag', 'cut', { cs: a.callsign });
+            }
+          }
+        }
       }
 
       // Flights that reach another field land there. S.E.A.N. counts them all.

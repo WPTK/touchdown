@@ -30,6 +30,13 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
   S.E.A.N.'s landed counter counts all of them, and the monitor lists where each one actually came down
 - Two scoreboards. S.E.A.N. reports on-time 100%, delays 0 and safety "11/10", and none of it ever gets worse.
   Next to it the monitor counts the holds, losses, diversions and go-arounds
+- Copper outages. Now and then the scope goes dark for 90 seconds, like the Newark and Philadelphia TRACON
+  outages. Traffic keeps moving, S.E.A.N. logs "zero conflicts observed", and the monitor reports what actually
+  happened once the picture is back
+- Shutdown mode. A toggle that replays the 43-day shutdown's flight cuts (4%, then 6%, then 3%). S.E.A.N. makes
+  them by deleting aircraft off the scope and counts every one as on time
+- The meter. The $12.5B down payment and the $30B ask, with every separation loss billed as another down payment.
+  GAO found 11,389 project schedules. S.E.A.N.'s says "now"
 - A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"
