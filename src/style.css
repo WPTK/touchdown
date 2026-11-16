@@ -81,6 +81,7 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .feed li.brag { border-left-color: var(--transit); }
 .feed li.pilot { border-left-color: var(--alert); color: var(--dim); }
 .feed li.blame { border-left-color: var(--hold); }
+.feed li.feed li.blame { border-left-color: var(--hold); }
 .feed time, .log time { color: var(--dim); margin-right: 6px; }
 .log li { border-left-color: var(--alert); }
 .log .para { color: var(--alert); margin-right: 6px; }
@@ -109,3 +110,16 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
   main { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; }
   aside { border-left: 0; border-top: 1px solid var(--rule); }
 }
+
+.wx { border-top: 1px solid var(--rule); margin-top: 14px; padding-top: 2px; }
+.wx h2 { margin-top: 12px; }
+.tag { margin-left: 6px; padding: 1px 6px; border: 1px solid var(--rule); color: var(--text); letter-spacing: 0; }
+.tag.IFR, .tag.LIFR { color: var(--alert); border-color: var(--alert); }
+.tag.MVFR { color: var(--hold); border-color: var(--hold); }
+.metar { margin: 0 0 8px; padding: 6px 8px; border: 1px solid var(--rule); color: var(--dim); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.advisory { margin: 0 0 8px; padding: 6px 8px; border: 1px solid var(--alert); color: var(--alert); font-size: 12px; }
+.advisory[hidden] { display: none; }
+.sean { border-color: var(--hold); color: var(--hold); }
+.sean[hidden] { display: none; }
+.controls > *, .controls label { min-width: 0; }
+.controls select { max-width: 100%; }
