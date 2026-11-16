@@ -37,7 +37,7 @@ const ZTL_BOX = { x: [-199, 227], y: [-139, 225] };
 export const centerName = (x, y) => centerAt(artcc, x, y);
 
 export function createEnroute({ seed = 1, perHour = 60, controller = 'safe' } = {}) {
-  const en = { t: 0, rng: mulberry32(seed * 7919 + 17), perHour, controller, aircraft: [], nextId: 1, nextSpawnT: 0, handoffs: [], losses: [], open: new Set(), overflown: 0, delayedS: 0, steps: 0 };
+  const en = { t: 0, rng: mulberry32(seed * 7919 + 17), perHour, controller, aircraft: [], nextId: 1, nextSpawnT: 0, handoffs: [], losses: [], open: new Set(), overflown: 0, rejected: 0, shed: 0, steps: 0 };
   // Start with the sky already full: place aircraft partway along their routes.
   const inFlight = Math.round((perHour * (2 * HALF_ROUTE_NM)) / 450);
   for (let i = 0; i < inFlight; i++) spawn(en, en.rng() * 0.9 + 0.05, false);
@@ -104,10 +104,15 @@ function assign(en, c) {
     c.alt = 290 + 10 * Math.floor(en.rng() * 13);
     return true;
   }
-  const levels = [...levelsFor(c.course)].sort(() => en.rng() - 0.5);
+  const levels = [...levelsFor(c.course)];
+  for (let i = levels.length - 1; i > 0; i--) {
+    const j = Math.floor(en.rng() * (i + 1));
+    [levels[i], levels[j]] = [levels[j], levels[i]];
+  }
   for (const fl of levels) {
     c.alt = fl;
     if (!conflicts(en, c)) return true;
+    en.rejected++;
   }
   return false;
 }
@@ -121,7 +126,7 @@ function spawn(en, startFrac, count = true) {
     en.aircraft.push(c);
     return c;
   }
-  if (count) en.delayedS++;
+  if (count) en.shed++; // no clear level in 40 tries: this one is not flown, so the real rate can sit under perHour
   return null;
 }
 

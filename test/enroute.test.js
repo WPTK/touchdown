@@ -71,10 +71,18 @@ test('a planted non-RVSM aircraft one level (1,000 ft) from a conflicting RVSM o
   assert.equal(en.losses.length, 0);
 });
 
-test('the safe controller keeps non-RVSM aircraft clear by 2,000 ft or 5 NM', () => {
+test('the probe has work to do: it turns levels down at 120 an hour, and the monitor still sees none', () => {
   const en = run(createEnroute({ seed: 9, perHour: 120 }), 4 * 3600);
-  assert.ok(en.losses.length === 0);
-  assert.ok(en.aircraft.some((a) => !a.rvsm) || en.overflown > 0);
+  assert.ok(en.rejected > 0, `rejected ${en.rejected}`);
+  assert.equal(en.losses.length, 0);
+});
+
+test('closest approach clamps: a pair that has passed, and one that despawns first', () => {
+  const a = { x: 0, y: 0, vx: 0.1, vy: 0, leftNm: 1000 };
+  const passed = { x: -50, y: 4, vx: -0.1, vy: 0, leftNm: 1000 };
+  assert.ok(Math.abs(closestNm(a, passed) - Math.hypot(50, 4)) < 1e-9);
+  const dies = { x: 100, y: 3, vx: -0.1, vy: 0, leftNm: 10 }; // 100 s of flying, they would meet at 500 s
+  assert.ok(closestNm(a, dies) > 50);
 });
 
 test('S.E.A.N. picks levels without looking and the monitor catches it', () => {
@@ -90,6 +98,11 @@ test('handoffs: only between the five centres, each pair named, and the line say
   for (const h of en.handoffs) {
     assert.ok(names.has(h.from) && names.has(h.to) && h.from !== h.to);
     assert.equal(centerName(h.x, h.y), h.to);
+  }
+  const last = new Map();
+  for (const h of en.handoffs) {
+    if (last.has(h.id)) assert.equal(last.get(h.id).to, h.from, `${h.callsign} chain`);
+    last.set(h.id, h);
   }
   assert.match(handoffLine(en.handoffs[0]), /S\.E\.A\.N\. Z.. hands off to S\.E\.A\.N\. Z../);
   assert.ok(en.handoffs.some((h) => h.from === 'ZTL' || h.to === 'ZTL'));
