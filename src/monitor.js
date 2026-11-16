@@ -1,6 +1,6 @@
 // JO 7110.65 conformance monitor. It watches the sim from outside and never changes it.
 // Each check cites the paragraph it enforces; the wording comes from the FAA text in docs/research/faa-rules-deep.md
-// (7110.65BB mirrored from faa.gov). Violations are { t, para, title, ids, detail }. A breach that is still going
+// (JO 7110.65BB, read from faa.gov; see faa-rules.md for the confirmation log). Violations are { t, para, title, ids, detail }. A breach that is still going
 // on is logged once and re-armed when it ends. One-off events (an altitude assignment, a speed order) are logged
 // each time.
 //

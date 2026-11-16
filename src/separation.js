@@ -14,12 +14,13 @@ import { PRM_BELOW_FT, spacingFt as katlSpacingFt } from './airspace.js';
 
 const EPS = 1e-6;
 
-// 5-9-6 diagonal minimum on adjacent finals, by centerline spacing in feet. null under 2,500 ft.
+// 5-9-6 diagonal minimum on adjacent finals, by centerline spacing in feet. null under 2,500 ft. The text's bands
+// run "at least 2,500 but no more than 3,600", "more than 3,600 but no more than 8,300", "more than 8,300 but no more than 9,000".
 export function diagonalNm(ft) {
   if (ft < 2500) return null;
-  if (ft < 3600) return 1.0;
-  if (ft < 8300) return 1.5;
-  if (ft < 9000) return 2.0;
+  if (ft <= 3600) return 1.0;
+  if (ft <= 8300) return 1.5;
+  if (ft <= 9000) return 2.0;
   return 0; // over 9,000 ft: widely spaced (5-9-10), no minimum between the finals
 }
 

@@ -124,6 +124,10 @@ test('parallel finals: independent with PRM under 4,300 ft, dependent without it
   assert.equal(diagonalNm(3000), 1.0);
   assert.equal(diagonalNm(4200), 1.5);
   assert.equal(diagonalNm(2000), null);
+  // the FAA bands include their upper edge (5-9-6)
+  assert.equal(diagonalNm(3600), 1.0);
+  assert.equal(diagonalNm(8300), 1.5);
+  assert.equal(diagonalNm(9000), 2.0);
   // Established on adjacent finals the pair is exempt; a pair still turning on is not; the same runway never is.
   const est = (rwy) => ({ rwy, est: true });
   assert.equal(lostSeparation(1.2, 0, est('27L'), est('28'), cfg), false);
