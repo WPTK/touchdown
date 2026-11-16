@@ -10,6 +10,7 @@
 import { FAF, RUNWAY } from './sim.js';
 import { wakeMinNm } from './fleet.js';
 import { PLACES } from './places.js';
+import { CALM_KT, FLOWS, components } from './weather.js';
 
 const EPS = 1e-6;
 const KT = 1 / 3600;
@@ -22,6 +23,7 @@ export const PARA = Object.freeze({
   WAKE: '5-5-4 wake',
   UAP: '9-8-1',
   AARO: 'AIM 7-7-4',
+  RWY: '3-5-1',
 });
 
 // 5-7-1: no speed adjustment inside the final approach fix on final or a point 5 miles from the runway,
@@ -97,6 +99,21 @@ export function observe(m, sim) {
         `${name(a)} at ${Math.round(a.speedKt)} kt, ${Math.round(a.alt)} ft`,
       );
     }
+  }
+
+  // 3-5-1: assign the runway most nearly aligned with the wind at 5 kt or more. Tailwind and crosswind considerations
+  // take precedence over delay/capacity. This judges the flow the controller wants (the safe controller's change
+  // waits for the wind to hold and the airspace to drain, and is not a violation while it does).
+  const wx = sim.wx;
+  if (sim.weather && wx.windDir != null && wx.windKt >= CALM_KT && sim.flowWant !== wx.desiredFlow) {
+    const c = components(wx.windDir, wx.windKt, sim.flowWant);
+    flag(
+      `rwy:${sim.flowWant}`,
+      PARA.RWY,
+      'Runway not aligned with the wind',
+      [],
+      `${FLOWS[sim.flowWant].runways.join('/')} chosen with wind ${String(wx.windDir).padStart(3, '0')} at ${wx.windKt} kt (${Math.round(c.tail)} kt tailwind); ${FLOWS[wx.desiredFlow].runways.join('/')} is aligned`,
+    );
   }
 
   // 5-5-5 b: an altitude may be assigned once the aircraft that held it has been issued a descent and is seen
