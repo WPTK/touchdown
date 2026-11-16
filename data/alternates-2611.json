@@ -1,0 +1,53 @@
+{
+ "source": {
+  "file": "FAACIFP18",
+  "cycle": "2611",
+  "tool": "scripts/alternates.js"
+ },
+ "airports": {
+  "KATL": {
+   "ident": "KATL",
+   "name": "HARTSFIELD/JACKSON ATLANTA INT",
+   "lat": 33.6367,
+   "lon": -84.42786389,
+   "xNm": 0,
+   "yNm": 0,
+   "distNm": 0,
+   "bearingDeg": 0,
+   "raw": "SUSAP KATLK7AATL     0     123YHN33381212W084254031W005001026         1800018000C    MNAR    HARTSFIELD/JACKSON ATLANTA INT248502410"
+  },
+  "KPDK": {
+   "ident": "KPDK",
+   "name": "DEKALB-PEACHTREE",
+   "lat": 33.87600278,
+   "lon": -84.30203056,
+   "xNm": 6.2726,
+   "yNm": 14.3717,
+   "distNm": 15.7,
+   "bearingDeg": 24,
+   "raw": "SUSAP KPDKK7APDK     0     060YHN33523361W084180731W005000998         1800018000C    MNAR    DEKALB-PEACHTREE              850602010"
+  },
+  "KBHM": {
+   "ident": "KBHM",
+   "name": "BIRMINGHAM-SHUTTLESWORTH INTL",
+   "lat": 33.56388889,
+   "lon": -86.75230556,
+   "xNm": -116.282,
+   "yNm": -3.0657,
+   "distNm": 116.3,
+   "bearingDeg": 268,
+   "raw": "SUSAP KBHMK7ABHM     0     120YHN33335000W086450830W003000650         1800018000C    MNAR    BIRMINGHAM-SHUTTLESWORTH INTL 334501610"
+  },
+  "KLGC": {
+   "ident": "KLGC",
+   "name": "LAGRANGE/CALLAWAY",
+   "lat": 33.00915,
+   "lon": -85.07320556,
+   "xNm": -32.4928,
+   "yNm": -37.5776,
+   "distNm": 49.7,
+   "bearingDeg": 221,
+   "raw": "SUSAP KLGCK7ALGC     0     064YHN33003294W085042354W004000694         1800018000C    MNAR    LAGRANGE/CALLAWAY             417212113"
+  }
+ }
+}
