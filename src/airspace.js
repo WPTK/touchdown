@@ -9,63 +9,12 @@
 // and the threshold. Where the arrival is vectored, the sim flies a straight line to the nearest IAF: that vector is a
 // sim choice (the CIFP has no data for it).
 
-import data from '../data/katl-2611.json' with { type: 'json' };
+import katlData from '../data/katl-2611.json' with { type: 'json' };
 
-export const AIRPORT = data.airport;
-export const CYCLE = data.source;
-
-const fixOf = (key) => {
-  const f = data.fixes[key];
-  if (!f) throw new Error(`unknown fix ${key}`);
-  return f;
-};
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 // The weather file names runways as controllers say them (8L, 9R); the CIFP pads them (08L, 09R).
 export const rwId = (r) => (/^\d[LR]?$/.test(r) ? `0${r}` : r);
 const pt = (f) => ({ x: f.xNm, y: f.yNm, id: f.ident });
-
-// ---- runways and approaches ---------------------------------------------------------------------------------------
-
-export const RUNWAYS = Object.freeze(
-  Object.fromEntries(
-    data.runways.map((r) => [
-      r.ident,
-      Object.freeze({
-        ident: r.ident,
-        x: r.xNm,
-        y: r.yNm,
-        elevFt: r.thresholdElevationFt,
-        tchFt: r.tchFt,
-        lengthNm: r.lengthFt / 6076.12,
-        trueBearingDeg: r.trueBearingDeg,
-        // Unit vector the aircraft flies on final, along the runway heading.
-        dir: { x: Math.sin((r.trueBearingDeg * Math.PI) / 180), y: Math.cos((r.trueBearingDeg * Math.PI) / 180) },
-      }),
-    ]),
-  ),
-);
-
-// Centerline spacing of two parallel runways in feet, from the projected thresholds. Each pair is parallel
-// (every runway is 090 or 270 true), so the spacing is the north-south offset.
-export function spacingFt(a, b) {
-  a = rwId(a);
-  b = rwId(b);
-  return Math.abs(RUNWAYS[a].y - RUNWAYS[b].y) * 6076.12;
-}
-
-// 5-5-4 notes: parallel runways under 2,500 ft apart count as a single runway for wake.
-export const WAKE_SINGLE_RUNWAY_FT = 2500;
-export function sameWakeRunway(a, b) {
-  a = rwId(a);
-  b = rwId(b);
-  if (a === b) return true;
-  return RUNWAYS[a].dir.x === RUNWAYS[b].dir.x && spacingFt(a, b) < WAKE_SINGLE_RUNWAY_FT;
-}
-
-// 5-9-8: PRM is required for simultaneous independent approaches on centerlines under 4,300 ft.
-export const PRM_BELOW_FT = 4300;
-
-const approachByRunway = new Map(data.ils.map((a) => [a.runway, a]));
 
 // ---- paths ----------------------------------------------------------------------------------------------------------
 
@@ -108,6 +57,56 @@ function seg(vs, i) {
   const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   return { dx: (b.x - a.x) / l, dy: (b.y - a.y) / l };
 }
+
+// Everything that depends on one airport's data: its runways, STARs and approaches. The sim builds one of these per airport.
+export function makeAirspace(data) {
+const fixOf = (key) => {
+  const f = data.fixes[key];
+  if (!f) throw new Error(`unknown fix ${key}`);
+  return f;
+};
+// ---- runways and approaches ---------------------------------------------------------------------------------------
+
+export const RUNWAYS = Object.freeze(
+  Object.fromEntries(
+    data.runways.map((r) => [
+      r.ident,
+      Object.freeze({
+        ident: r.ident,
+        x: r.xNm,
+        y: r.yNm,
+        elevFt: r.thresholdElevationFt,
+        tchFt: r.tchFt,
+        lengthNm: r.lengthFt / 6076.12,
+        trueBearingDeg: r.trueBearingDeg,
+        // Unit vector the aircraft flies on final, along the runway heading.
+        dir: { x: Math.sin((r.trueBearingDeg * Math.PI) / 180), y: Math.cos((r.trueBearingDeg * Math.PI) / 180) },
+      }),
+    ]),
+  ),
+);
+
+// Centerline spacing of two parallel runways in feet, from the projected thresholds. Each pair is parallel
+// (every runway is 090 or 270 true), so the spacing is the north-south offset.
+export function spacingFt(a, b) {
+  a = rwId(a);
+  b = rwId(b);
+  return Math.abs(RUNWAYS[a].y - RUNWAYS[b].y) * 6076.12;
+}
+
+// 5-5-4 notes: parallel runways under 2,500 ft apart count as a single runway for wake.
+export const WAKE_SINGLE_RUNWAY_FT = 2500;
+export function sameWakeRunway(a, b) {
+  a = rwId(a);
+  b = rwId(b);
+  if (a === b) return true;
+  return RUNWAYS[a].dir.x === RUNWAYS[b].dir.x && spacingFt(a, b) < WAKE_SINGLE_RUNWAY_FT;
+}
+
+// 5-9-8: PRM is required for simultaneous independent approaches on centerlines under 4,300 ft.
+export const PRM_BELOW_FT = 4300;
+
+const approachByRunway = new Map(data.ils.map((a) => [a.runway, a]));
 
 // ---- STARs -----------------------------------------------------------------------------------------------------------
 
@@ -279,3 +278,6 @@ export function starLines(starIdent, runways) {
   return lines;
 }
 export const starIdents = () => data.stars.map((s) => s.ident);
+
+  return { AIRPORT, CYCLE, RUNWAYS, spacingFt, sameWakeRunway, holdFix, starsFor, outerPath, innerPath, missedFix, finalCourse, allFixes, starLines, starIdents };
+}
