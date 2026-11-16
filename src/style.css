@@ -139,3 +139,5 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .feed li.atis, .feed li.brief { border-left-color: var(--hold); }
 .feed li.pirep { border-left-color: var(--alert); color: var(--dim); }
 .feed li.brief { font-style: italic; }
+.trophies li.got:not(.now) { color: var(--dim); border-left-color: var(--rule); }
+.trophies li.self { border-left-style: dashed; }

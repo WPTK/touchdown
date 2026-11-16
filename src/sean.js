@@ -95,6 +95,11 @@ export function createSean(seed = 1) {
     nextBriefT: 3000 + crng() * 1800,
     briefings: 0,
     handoffs: 0,
+    wrongFreq: 0, // handoffs to the ATIS frequency
+    blocked: 0, // calls somebody stepped on
+    unables: 0,
+    drives: 0, // replacement floppy drives sourced from an online auction
+    shutdownsFinished: 0, // the whole 43 days, run to the end
   };
 
   const say = (sim, kind, text, extra) => {
@@ -118,6 +123,7 @@ export function createSean(seed = 1) {
     const wrong = crng() < READBACK_ERR ? misread(c, crng) : null;
     const text = readback(wrong ?? c);
     if (crng() < STEPPED_ON) {
+      sean.blocked++;
       say(sim, 'readback', stepOn(text, crng), { blocked: true });
       say(sim, 'tx', pick('blocked', crng));
     }
@@ -131,6 +137,7 @@ export function createSean(seed = 1) {
   };
   // "Unable". The pilot says so, S.E.A.N. files it under compliance.
   const unable = (sim, key, vars) => {
+    sean.unables++;
     say(sim, 'pilot', `${vars.cs}: ${pick(`unable_${key}`, crng, spokenVars(vars))}`);
     say(sim, 'tx', pick('unableReply', crng, spokenVars(vars)));
   };
@@ -220,6 +227,7 @@ export function createSean(seed = 1) {
     const freq = wrong ? FREQ.atis.arrival : FREQ.tower[a.rwy];
     if (!freq) return;
     sean.handoffs++;
+    if (wrong) sean.wrongFreq++;
     lineC(sim, 'tx', 'handoffTx', { cs: a.callsign, rwy: a.rwy, nm: Math.round(distRwy(a)) });
     lineC(sim, 'tx', 'handoffAccept', { cs: a.callsign });
     if (crng() < 0.3) lineC(sim, 'brag', 'handoffBrag', { cs: a.callsign });
@@ -444,6 +452,7 @@ export function createSean(seed = 1) {
       if (sd.on) {
         const stage = Math.floor((t - sd.startT) / STAGE_S);
         if (stage >= CUT_STAGES.length) {
+          sean.shutdownsFinished++;
           ctl.setShutdown(sim, false);
         } else {
           if (stage !== sd.stage) {
@@ -472,7 +481,10 @@ export function createSean(seed = 1) {
       if (!sean.floppy && t >= sean.nextFloppyT) {
         sean.floppy = { startT: t, version: `0.${sean.version + 1}`, disk: 1 };
         lineF(sim, 'brag', 'floppyStart', { v: sean.floppy.version });
-        if (frng() < 0.4) lineF(sim, 'brag', 'floppyDrive');
+        if (frng() < 0.4) {
+          sean.drives++;
+          lineF(sim, 'brag', 'floppyDrive');
+        }
       } else if (sean.floppy) {
         const p = floppyProgress(sean, t);
         const f = sean.floppy;
