@@ -69,6 +69,8 @@ chap3_section_10.html, chap4_section_5.html.
 
 ## Still to research
 
+Most of this list is now answered in [`faa-rules-deep.md`](faa-rules-deep.md), which also corrects some of the table above. What it couldn't settle is in its section 0.
+
 - Simultaneous independent and dependent parallel approaches (7110.65 5-9-6, 5-9-7), runway spacing minima, NTZ/PRM; required for KATL's parallel arrival runways.
 - Full CWT wake matrix and the type-to-category list (JO 7360.1).
 - A80 TRACON specifics: KATL flows, arrival runways, corner-post STARs (from CIFP, not memory).
