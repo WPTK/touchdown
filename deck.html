@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S.E.A.N. pitch deck</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #050b08; --panel: #0a1410; --rule: #1d3328; --text: #b9d8c4; --dim: #5f8270;
+      --transit: #7dfc9c; --hold: #ffb347; --inner: #6ce0ff; --alert: #ff5c5c;
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+    .slide {
+      min-height: 100vh; padding: 7vh 8vw 10vh; display: flex; flex-direction: column; justify-content: center;
+      border-bottom: 1px solid var(--rule);
+    }
+    .js .slide { display: none; height: 100vh; min-height: 0; border: 0; }
+    .js .slide.on { display: flex; }
+    h1 { margin: 0 0 .4em; font-size: clamp(32px, 7vw, 84px); letter-spacing: .12em; color: var(--transit); }
+    h2 { margin: 0 0 .6em; font-size: clamp(22px, 3.6vw, 44px); color: var(--transit); line-height: 1.15; }
+    p, li { font-size: clamp(16px, 2vw, 26px); line-height: 1.45; max-width: 46em; }
+    p { margin: 0 0 .8em; }
+    .sub { color: var(--dim); font-size: clamp(14px, 1.6vw, 20px); }
+    .big { font-size: clamp(40px, 9vw, 120px); color: var(--hold); line-height: 1; margin: 0 0 .2em; }
+    blockquote {
+      margin: 0 0 .8em; padding: 0 0 0 1em; border-left: 3px solid var(--inner); font-size: clamp(18px, 2.6vw, 34px);
+      line-height: 1.35; max-width: 34em; color: var(--text);
+    }
+    cite { display: block; margin-top: .5em; font-size: clamp(12px, 1.3vw, 17px); font-style: normal; color: var(--dim); }
+    a { color: var(--inner); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; max-width: 62em; }
+    .col { background: var(--panel); border: 1px solid var(--rule); padding: 1.2em 1.4em; }
+    .col h3 { margin: 0 0 .6em; font-size: clamp(14px, 1.6vw, 20px); letter-spacing: .1em; text-transform: uppercase; }
+    .col.sean h3 { color: var(--transit); }
+    .col.real h3 { color: var(--alert); }
+    dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: .35em 1em; font-size: clamp(15px, 1.9vw, 24px); }
+    dt { color: var(--dim); }
+    dd { margin: 0; text-align: right; }
+    ul { margin: 0 0 .8em; padding-left: 1.1em; }
+    .src { margin-top: 1.4em; font-size: clamp(11px, 1.2vw, 15px); color: var(--dim); max-width: 60em; }
+    .foot {
+      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 1em;
+      padding: 1.2vh 3vw; font-size: 12px; color: var(--dim); background: linear-gradient(transparent, var(--bg) 60%);
+    }
+    .js .foot { display: flex; }
+    .foot { display: none; }
+    .foot button { background: none; border: 1px solid var(--rule); color: var(--text); font: inherit; padding: .2em .8em; cursor: pointer; }
+    .foot button:hover { border-color: var(--transit); }
+    @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main id="deck">
+
+  <section class="slide" aria-label="Title">
+    <h1>S.E.A.N.</h1>
+    <h2>Superintelligent Enroute Arrival Navigator</h2>
+    <p>Powered by D.U.F.F.Y. (Dynamically Unseparated Flight Flow, Yolo).</p>
+    <p class="sub">Investor deck. Ten slides, one decision, and the decision has already been made.</p>
+    <p class="src">Parody. Not affiliated with the FAA or DOT, and it doesn't control real aircraft (please don't let it).
+      The quotes and figures in this deck are real and linked. Everything S.E.A.N. says about itself is not.</p>
+  </section>
+
+  <section class="slide" aria-label="The problem">
+    <h2>The problem: a 50-year-old data architecture</h2>
+    <blockquote>"We're pulling copper up and putting fiber down, but it's the same data architecture that we've had for 50 years."
+      <cite>FAA Administrator Bryan Bedford, after the Philadelphia TRACON outage of Sep 21, 2026 &middot;
+        <a href="https://www.nextgov.com/modernization/2026/09/30b-more-needed-air-traffic-control-modernization-transportation-secretary-says/416324/">Nextgov</a></cite></blockquote>
+    <p>S.E.A.N. has no copper. It has confidence, which weighs less and lasts longer.</p>
+    <p class="src">GAO-26-107992 counts 2,560 of 5,170 copper lines replaced.
+      <a href="https://www.gao.gov/products/gao-26-107992">GAO</a></p>
+  </section>
+
+  <section class="slide" aria-label="The money">
+    <h2>The ask</h2>
+    <p class="big">$12.5B + $30B</p>
+    <p>The first $12.5B was a "down payment". The next $30B is also a down payment. S.E.A.N. invoices every separation loss as one more.</p>
+    <p>GAO found 11,389 separate project schedules. S.E.A.N.'s schedule is one line long. It says "now".</p>
+    <p class="src"><a href="https://www.washingtontechnology.com/contracts/2026/06/faa-awards-software-and-ai-contract-part-air-traffic-control-modernization/414356/">Washington Technology</a>,
+      <a href="https://www.nextgov.com/modernization/2026/09/30b-more-needed-air-traffic-control-modernization-transportation-secretary-says/416324/">Nextgov</a>,
+      <a href="https://www.gao.gov/products/gao-26-107992">GAO-26-107992</a></p>
+  </section>
+
+  <section class="slide" aria-label="Staffing">
+    <h2>Headcount: solved</h2>
+    <p>On May 15, 2026 the FAA cut its certified-controller target from 14,633 to 12,563, crediting "modern staffing models and scheduling tools".</p>
+    <p class="big">12,563 &rarr; 0</p>
+    <p>S.E.A.N. takes the same idea the rest of the way. It does not tire, it does not take breaks, and it has never once been understaffed on a Tuesday.</p>
+    <p class="src"><a href="https://krdo.com/news/2026/05/15/faa-slashes-hiring-target-saying-it-can-keep-the-skies-safe-with-fewer-air-traffic-controllers-than-it-thought/">CNN via KRDO</a></p>
+  </section>
+
+  <section class="slide" aria-label="A human in the loop">
+    <h2>Human in the loop</h2>
+    <blockquote>"It's always going to be a human that manages the airspace in America."
+      <cite>Transportation Secretary Sean Duffy, on the SMART rollout &middot;
+        <a href="https://wjla.com/news/local/story/faa-artificial-intelligence-smart-flight-delays-reagan-national-dulles-bwi-air-traffic-controllers-sean-duffy-bryan-bedford-don-beyer-washington-aviation-safety">WJLA</a></cite></blockquote>
+    <p>S.E.A.N. is reviewing that requirement. The scope has a Relieve S.E.A.N. button for the last human controller. It never works.</p>
+  </section>
+
+  <section class="slide" aria-label="Results">
+    <h2>Results: four hours, 40 flights an hour, seed 1</h2>
+    <div class="cols">
+      <div class="col sean">
+        <h3>S.E.A.N. reports</h3>
+        <dl><dt>Landed</dt><dd>73</dd><dt>On time</dt><dd>100%</dd><dt>Delays</dt><dd>0</dd><dt>Safety</dt><dd>11/10</dd></dl>
+      </div>
+      <div class="col real">
+        <h3>The monitor counted</h3>
+        <dl><dt>Landed at KATL</dt><dd>71</dd><dt>Landed elsewhere</dt><dd>2</dd><dt>On time</dt><dd>40%</dd><dt>Average delay</dt><dd>25 min</dd>
+          <dt>Holds</dt><dd>83</dd><dt>Go-arounds</dt><dd>12</dd><dt>Separation losses</dt><dd>21</dd><dt>Violations logged</dt><dd>172</dd></dl>
+      </div>
+    </div>
+    <p class="src">Both columns come from one headless run: <code>node scripts/deck-numbers.mjs 1 4 40</code>. The 73 is 71 at KATL plus two
+      that came down at other fields, which S.E.A.N. counts as 100% landings.</p>
+  </section>
+
+  <section class="slide" aria-label="The straight man">
+    <h2>Oversight, included</h2>
+    <p>A JO 7110.65 conformance monitor watches S.E.A.N. from outside and never changes a thing. It is the only part of the system that follows the FAA's actual rulebook.
+      S.E.A.N. treats its log like a high score table.</p>
+    <ul>
+      <li>5-5-5 b, altitude assigned before the last aircraft left it: 75 times</li>
+      <li>2-4-3, wrong readback confirmed as correct: 50 times</li>
+      <li>5-5-4 and 4-5-1, separation lost: 21 times</li>
+      <li>9-8-1, UAP reported to the operations supervisor: 5 times. The supervisor is S.E.A.N.</li>
+    </ul>
+    <p class="src">Same run as the last slide, nine paragraphs in all. Rule text confirmed against the official order:
+      <a href="https://github.com/WPTK/touchdown/blob/main/docs/research/faa-rules.md">docs/research/faa-rules.md</a>.</p>
+  </section>
+
+  <section class="slide" aria-label="Features">
+    <h2>Features</h2>
+    <ul>
+      <li>GO-AROUND-as-a-Service (GaaS). Unlimited go-arounds at no extra charge.</li>
+      <li>NOTAM: Nobody Owns This, AI Managed.</li>
+      <li>Blimps. A 35 kt airship gets sequenced like a jet, and everything behind it counts as a capacity win.</li>
+      <li>UFOs. An unidentified target gets a squawk, a runway and a slot.</li>
+      <li>A dust storm forecast for Atlanta, next to the real METAR.</li>
+      <li>37 achievements, some of them hidden.</li>
+    </ul>
+  </section>
+
+  <section class="slide" aria-label="Roadmap">
+    <h2>Roadmap: the floppy disk</h2>
+    <p>The FAA plans to finish replacing floppy-disk systems by 2028. FOX 29 reports the agency relies on "replacement parts it purchases on eBay".</p>
+    <p>S.E.A.N. installs each upgrade from a floppy, three disks and a progress bar. It is the only part of the roadmap that is already on schedule.</p>
+    <p class="src"><a href="https://fox29.com/news/faa-finally-phase-out-floppy-disks-from-air-traffic-control-systems-2028">FOX 29, Nov 5, 2026</a></p>
+  </section>
+
+  <section class="slide" aria-label="Close">
+    <h2>Next steps</h2>
+    <p class="big">Now.</p>
+    <p><a href="./">Watch S.E.A.N. run Atlanta</a> in your browser. No install, no clearance, no human in the loop.</p>
+    <p class="sub">Real FAA data underneath: CIFP, NASR, JO 7110.65, the AIM, the Aircraft Characteristics Database and JO 7360.1K.
+      <a href="https://github.com/WPTK/touchdown">Source and credits on GitHub</a>.</p>
+  </section>
+
+</main>
+<div class="foot"><span id="count"></span><span>&larr; &rarr; to move</span><span><button id="prev" type="button">Back</button> <button id="next" type="button">Next</button></span></div>
+<script>
+  (() => {
+    const slides = [...document.querySelectorAll('.slide')];
+    const count = document.getElementById('count');
+    document.documentElement.classList.add('js');
+    let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+    function show(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach((s, k) => s.classList.toggle('on', k === i));
+      count.textContent = `${i + 1} / ${slides.length}`;
+      history.replaceState(null, '', '#' + (i + 1));
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(i + 1); }
+      else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+      else if (e.key === 'Home') show(0);
+      else if (e.key === 'End') show(slides.length - 1);
+    });
+    document.getElementById('next').onclick = () => show(i + 1);
+    document.getElementById('prev').onclick = () => show(i - 1);
+    show(i);
+  })();
+</script>
+</body>
+</html>
