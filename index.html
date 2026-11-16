@@ -71,6 +71,11 @@
       </section>
 
       <section class="controls">
+        <div class="row views" role="group" aria-label="Scope view">
+          <button id="viewRegion" type="button" aria-pressed="false">Region</button>
+          <button id="viewAtl" type="button" aria-pressed="true">ATL</button>
+          <button id="viewClt" type="button" aria-pressed="false">CLT</button>
+        </div>
         <div class="row">
           <button id="pause" type="button">Pause</button>
           <label>Speed
@@ -135,6 +140,12 @@
         <h2>Trophy case</h2>
         <p id="score" class="score"></p>
         <ul id="trophies" class="trophies"></ul>
+      </section>
+
+      <section>
+        <h2>Region</h2>
+        <p id="regional" class="metar"></p>
+        <p id="handoff" class="metar sean"></p>
       </section>
 
       <section>
