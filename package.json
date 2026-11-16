@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.js",
-    "test": "node --test"
+    "test": "node --test",
+    "data": "node scripts/cifp.js"
   },
   "engines": {
     "node": ">=20"
