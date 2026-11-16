@@ -74,7 +74,7 @@ function reset() {
   const rp = replayById($('replay').value);
   // Recorded demand is demand only: the real flights come in at the real times on the real transitions, and S.E.A.N. flies them.
   $('demand').disabled = !!rp;
-  $('replayOut').textContent = rp ? `${rp.date.slice(5)}, ${rp.windowLocal} local. Demand only, S.E.A.N. flies them.` : '';
+  $('replayOut').textContent = rp ? `${rp.date.slice(5)}, ${rp.windowLocal} at the corner post. Demand only, S.E.A.N. flies them.` : '';
   ctl = createSean(seed);
   sim = createSim({
     seed,

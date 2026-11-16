@@ -316,8 +316,9 @@ S.E.A.N., and S.E.A.N. runs the enroute sky too, so its enroute losses show in t
 ## Replayed arrivals: real KATL and KCLT traffic as demand (`data/replay-2026-07.json`, `src/replay.js`, `scripts/replay.js`)
 
 Two real pushes can replace the Poisson process: Friday 24 July 2026, 19:00 to 22:00 local, and Friday 17 July 2026, 07:00 to
-10:00 local, each for Atlanta and Charlotte together (210 and 190 arrivals into KATL, 105 and 107 into KCLT). They are the
-busiest three-hour windows in the month for the busiest weekday; the peak hour is 91 an hour at KATL.
+10:00 local, measured at the corner post (the landings run 25 minutes later, about 19:25 to 22:25), each for Atlanta and Charlotte together (210 and 190 arrivals into KATL, 105 and 107 into KCLT). They are two of the
+busiest three-hour stretches in the month; counting by landing time the same windows hold 211 and 111 (24 July) and 197 and 103
+(17 July). The busiest single hour of the month is 91 landings at KATL (16 July, 21:00).
 `?replay=fri-evening` picks one from the address bar; the Traffic select does the same. Moving the demand slider, or a drain,
 hands demand back to Poisson (`setDemand` clears the replay).
 
