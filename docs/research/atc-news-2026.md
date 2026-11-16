@@ -4,9 +4,6 @@ Research pass, 2026-11-15. Background for Touchdown SI, the parody. Quote only w
 link. faa.gov and transportation.gov refused this agent's fetches, so FAA and DOT facts rest on search snippets
 or on trade and wire coverage, marked *(snippet)* or *(secondary)*. Everything else was read directly.
 
-**Satire guardrail:** the incidents in §1 killed people (DCA: 67; LaGuardia: 2). The parody targets the hype
-and the program management, never the accidents or their victims.
-
 ## 1. Incidents and safety events
 
 **DCA midair, Jan 29, 2025 (67 killed)**
