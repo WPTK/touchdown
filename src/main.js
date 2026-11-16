@@ -1,5 +1,8 @@
 import { createSim, setDemand, step } from './sim.js';
 import { drawScope } from './scope.js';
+import { createWeather, components, FLOWS } from './weather.js';
+import { SCENARIOS, byId } from './scenarios.js';
+import { sharknadoMetar } from './wx-sean.js';
 import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
 
@@ -20,13 +23,35 @@ let carry = 0;
 let lastFrame = performance.now();
 let lastPanel = 0;
 
+for (const s of SCENARIOS) {
+  const o = document.createElement('option');
+  o.value = s.id;
+  o.textContent = `${s.name} ${s.date.slice(5)}`;
+  $('scenario').append(o);
+}
+// ?wx=thunderstorm in the address bar picks a day, so a link can open straight on one.
+const wxParam = new URLSearchParams(location.search).get('wx');
+if (wxParam && byId(wxParam)) $('scenario').value = wxParam;
+const seedParam = new URLSearchParams(location.search).get('seed');
+if (seedParam) $('seed').value = seedParam;
+
 function reset() {
   const seed = Number($('seed').value) || 1;
+  const scenario = byId($('scenario').value);
   ctl = createSean(seed);
-  sim = createSim({ seed, demandPerHour: Number($('demand').value), controller: ctl });
+  sim = createSim({
+    seed,
+    demandPerHour: Number($('demand').value),
+    controller: ctl,
+    weather: scenario ? createWeather({ scenario, seed }) : null,
+  });
   monitor = createMonitor();
+  // ?t=5400 starts the run 90 minutes in, so a link can open on the storm.
+  const skip = Number(new URLSearchParams(location.search).get('t')) || 0;
+  while (sim.t < skip) step(sim, 1);
   trails = new Map();
   carry = 0;
+  $('seanFcst').hidden = true;
 }
 
 function sampleTrails() {
@@ -54,7 +79,35 @@ function hms(t) {
   return [s / 3600, (s % 3600) / 60, s % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':');
 }
 
+function updateWeatherPanel() {
+  const wx = sim.wx;
+  const m = wx.metar;
+  $('wxTag').textContent = sim.weather ? wx.category : 'calm';
+  $('wxTag').className = `tag ${sim.weather ? wx.category : ''}`;
+  $('metar').textContent = m ? m.raw : 'No weather loaded. Calm, west flow.';
+  $('flow').textContent = sim.changeover ? `changing to ${runwaysLabel(sim.flowWant)}` : runwaysLabel(sim.flow);
+  const c = components(wx.windDir, wx.windKt, sim.flow);
+  const wind = wx.windDir == null || !wx.windKt ? (wx.windKt ? `VRB ${wx.windKt} kt` : 'calm') : `${String(wx.windDir).padStart(3, '0')}/${wx.windKt}${wx.gustKt ? `G${wx.gustKt}` : ''}`;
+  $('windFinal').textContent = c.tail > 0.5 ? `${wind}, tail ${Math.round(c.tail)}` : c.head > 0.5 ? `${wind}, head ${Math.round(c.head)}` : wind;
+  $('gs').textContent = `${Math.round(sim.finalGsKt)} kt`;
+  $('cat').textContent = `${wx.category}, ${wx.approach ?? 'visual'}`;
+  $('spacing').textContent = `${Math.round(sim.cfg.spacingS / wx.rateMult)} s`;
+  const adv = $('advisory');
+  adv.hidden = !wx.llws;
+  if (wx.llws) adv.textContent = 'LOW LEVEL WIND SHEAR ADVISORIES IN EFFECT (JO 7110.65 3-1-8)';
+  const st = ctl.sean.wx;
+  $('seanFcst').hidden = !st.forecast;
+  if (st.forecast) $('seanFcst').textContent = `S.E.A.N. FORECAST ${st.forecast}`;
+  if (st.tornado) {
+    adv.hidden = false;
+    adv.textContent = sharknadoMetar({ base: sim.weather.metars[0], t: sim.t });
+  }
+}
+
+const runwaysLabel = (flow) => FLOWS[flow].runways.join(' ');
+
 function updatePanel() {
+  updateWeatherPanel();
   const losses = monitor.counts[PARA.SEP] || 0;
   $('losses').textContent = losses;
   $('losses').classList.toggle('bad', losses > 0);
@@ -150,7 +203,7 @@ function frame(now) {
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
   }
   const { width, height } = canvas.getBoundingClientRect();
-  drawScope(ctx, sim, trails, { width, height });
+  drawScope(ctx, sim, trails, { width, height, tornado: ctl.sean.wx.tornado ?? null });
   if (now - lastPanel > 250) {
     updatePanel();
     lastPanel = now;
@@ -167,6 +220,7 @@ $('demand').addEventListener('input', () => {
   setDemand(sim, Number($('demand').value));
 });
 $('reset').addEventListener('click', reset);
+$('scenario').addEventListener('change', reset);
 window.addEventListener('resize', resize);
 
 reset();
