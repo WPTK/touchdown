@@ -35,3 +35,15 @@ export function makeInverse(lat0, lon0) {
     return { lat: (p * 180) / Math.PI, lon: (l * 180) / Math.PI };
   };
 }
+
+// Point in polygon (even-odd) and which ARTCC a point is in, for shapes of {xNm, yNm} in the KATL frame (data/artcc-2611.json).
+export function inRing(ring, x, y) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i];
+    const b = ring[j];
+    if (a.yNm > y !== b.yNm > y && x < ((b.xNm - a.xNm) * (y - a.yNm)) / (b.yNm - a.yNm) + a.xNm) inside = !inside;
+  }
+  return inside;
+}
+export const centerAt = (artcc, x, y) => Object.values(artcc.centers).find((c) => c.shapes.some((s) => inRing(s, x, y)))?.ident ?? null;

@@ -278,3 +278,25 @@ Capacity. The same level stack (1,000 ft per 115 s) would allow 31 an hour. KCLT
 to 20.3 over 12 runs at overload (6 seeds, both flows), mean 16.9**, below KATL's 25. The routes are longer and arrivals wait on
 the probe; I did not break the gap down further. The oracle sweeps at 12, 24 and 45 an hour, both flows, seeds 1
 to 3 (`test/airports.test.js`), all with zero violations.
+
+## Enroute traffic and handoffs (`src/enroute.js`)
+
+Aircraft fly straight, level and at constant speed through ZTL at FL290 to FL410, on routes 660 NM long that cross a random
+point inside ZTL's boundary. They never meet the TRACON sims (29,000 ft against a 14,000 ft stack top). Each time one crosses
+a boundary between two of the five centres, `src/enroute.js` logs a handoff, and the line S.E.A.N. says is
+"S.E.A.N. ZTL hands off to S.E.A.N. ZME". The controller hands off to itself.
+
+Rules, from the local JO 7110.65 text, and only what it supports:
+
+- 5-5-4 (ERAM): 5 NM lateral below FL600.
+- 4-5-1: 1,000 ft vertical up to and including FL410. 2,000 ft between a non-RVSM aircraft and any other aircraft at or
+  above FL290. The text names only "non-RVSM", so RVSM is the 1,000 ft default, and 4% of the traffic is non-RVSM and gets 2,000 ft.
+  Above FL410 the rule is 2,000 ft; nothing here goes above FL410.
+- 4-5-2, TBL 4-5-1: courses 0 to 179 use odd levels (FL290 to FL410), 180 to 359 even (FL300 to FL400), 2,000 ft apart. The
+  table is in magnetic courses and the sim uses true; the few degrees of variation are not modelled.
+
+The safe controller picks a level and a start only when the straight path is clear of everything flying, to 1 NM beyond the
+minimum. That is exact, because nothing turns or climbs. S.E.A.N. picks any level and never looks. The monitor
+(`observeEnroute`) counts a loss when both lateral and vertical limits are broken at once. The oracle: zero losses over
+6 hours at 40, 80 and 120 an hour, 3 seeds each. S.E.A.N. at 120 an hour is caught by the same monitor.
+Cost: 56 microseconds per simulated second at 60 an hour (87 airborne), 171 at 120 an hour (197 airborne).

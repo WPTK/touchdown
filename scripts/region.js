@@ -7,19 +7,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { makeProjection, parseAirport, readCifp } from './cifp.js';
+import { centerAt, inRing } from '../src/geo.js';
 
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
 
-export function inRing(ring, x, y) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const a = ring[i];
-    const b = ring[j];
-    if (a.yNm > y !== b.yNm > y && x < ((b.xNm - a.xNm) * (y - a.yNm)) / (b.yNm - a.yNm) + a.xNm) inside = !inside;
-  }
-  return inside;
-}
-export const centerAt = (artcc, x, y) => Object.values(artcc.centers).find((c) => c.shapes.some((s) => inRing(s, x, y)))?.ident ?? null;
+export { inRing, centerAt };
 
 const EXTRA = ['KPDK']; // a busy general aviation reliever in the data, kept as a field even though it is not a hub
 
