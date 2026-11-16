@@ -17,7 +17,7 @@
       min-height: 100vh; padding: 7vh 8vw 10vh; display: flex; flex-direction: column; justify-content: center;
       border-bottom: 1px solid var(--rule);
     }
-    .js .slide { display: none; height: 100vh; min-height: 0; border: 0; }
+    .js .slide { display: none; height: 100vh; min-height: 0; border: 0; overflow-y: auto; justify-content: safe center; padding-bottom: 14vh; }
     .js .slide.on { display: flex; }
     h1 { margin: 0 0 .4em; font-size: clamp(32px, 7vw, 84px); letter-spacing: .12em; color: var(--transit); }
     h2 { margin: 0 0 .6em; font-size: clamp(22px, 3.6vw, 44px); color: var(--transit); line-height: 1.15; }
@@ -42,11 +42,10 @@
     ul { margin: 0 0 .8em; padding-left: 1.1em; }
     .src { margin-top: 1.4em; font-size: clamp(11px, 1.2vw, 15px); color: var(--dim); max-width: 60em; }
     .foot {
-      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 1em;
+      display: none; position: fixed; left: 0; right: 0; bottom: 0; justify-content: space-between; gap: 1em;
       padding: 1.2vh 3vw; font-size: 12px; color: var(--dim); background: linear-gradient(transparent, var(--bg) 60%);
     }
     .js .foot { display: flex; }
-    .foot { display: none; }
     .foot button { background: none; border: 1px solid var(--rule); color: var(--text); font: inherit; padding: .2em .8em; cursor: pointer; }
     .foot button:hover { border-color: var(--transit); }
     @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
@@ -77,7 +76,7 @@
   <section class="slide" aria-label="The money">
     <h2>The ask</h2>
     <p class="big">$12.5B + $30B</p>
-    <p>The first $12.5B was a "down payment". The next $30B is also a down payment. S.E.A.N. invoices every separation loss as one more.</p>
+    <p>The first $12.5B was a "down payment". The $30B on the table next is, presumably, also a down payment. S.E.A.N. invoices every separation loss as one more.</p>
     <p>GAO found 11,389 separate project schedules. S.E.A.N.'s schedule is one line long. It says "now".</p>
     <p class="src"><a href="https://www.washingtontechnology.com/contracts/2026/06/faa-awards-software-and-ai-contract-part-air-traffic-control-modernization/414356/">Washington Technology</a>,
       <a href="https://www.nextgov.com/modernization/2026/09/30b-more-needed-air-traffic-control-modernization-transportation-secretary-says/416324/">Nextgov</a>,
@@ -173,7 +172,7 @@
       history.replaceState(null, '', '#' + (i + 1));
     }
     document.addEventListener('keydown', (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || e.target.closest('button, a')) return;
       if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(i + 1); }
       else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); show(i - 1); }
       else if (e.key === 'Home') show(0);

@@ -107,7 +107,7 @@ The airspace is, which is kind of the whole joke. Everything here is from the FA
 - **METARs** from the Iowa Environmental Mesonet ASOS archive, and the TAF from aviationweather.gov
 - News, quotes and numbers from the sources linked in [`docs/research/atc-news-2026.md`](docs/research/atc-news-2026.md)
 
-All of it is in [`docs/data.md`](docs/data.md) and [`docs/research/`](docs/research/), with the source and retrieval date.
+The sources and retrieval dates are in [`docs/data.md`](docs/data.md) and [`docs/research/`](docs/research/).
 
 ```
 npm start      # then open http://127.0.0.1:8137/
