@@ -8,7 +8,7 @@
   2. **The west-flow and east-flow arrival triples are not equal.** In each triple, the near pair is 6,450 ft apart and the far pair is about 4,200 ft apart. That far pair is below the 4,300 ft line that forces PRM (5-9-8).
   3. **ATL's STARs publish almost no speeds.** Only JJEDI4 and GNDLF3 carry speed values in CIFP. Altitude restrictions are sparse too, and the STARs end at ILS approach-transition fixes or at "fly heading" legs. Controllers do the rest by vector.
 - Not settled by any source I could reach (all UNCONFIRMED):
-  - Current 7360.1K PDF URL and its CWT column. faa.gov returned 403 to every fetch.
+  - (Cleared 2026-11-16, issue #7) The 7360.1K PDF URL is https://www.faa.gov/documentLibrary/media/Order/FAA_Order_JO_7360.1K_Aircraft_Type_Designators.pdf, from the FAA publications page; the local copy is that file. faa.gov serves fetches that send a browser user agent. Notice JO 7360.7 (2025-10-14) changes 7360.1 and has not been read yet.
   - ATL's PRM or simultaneous-approach authorization.
   - TBFM and ZTL/A80 LOA specifics.
   - Pilot response-delay numbers. The AIM has none.
@@ -647,7 +647,7 @@ Notes:
 - Current edition: **JO 7360.1K**, issued 2025-04-10, status Active. Per the FAA document page, it cancelled 7360.1J on 2025-06-12. Status: SECONDARY (search-result snippet; the page returned 403 to my fetch).
 - Info page: https://www.faa.gov/regulations_policies/orders_notices/index.cfm/go/document.information/documentID/1043797
 - The FAA publications page lists JO 7360.1K (PDF) with a 06/12/2025 date: https://www.faa.gov/air_traffic/publications/ (SECONDARY).
-- **Exact PDF URL: UNCONFIRMED.** I could not retrieve it and did not guess. Open the info page or the publications page above and take the PDF link. For comparison, the superseded 7360.1J PDF is https://www.faa.gov/documentLibrary/media/Order/2024-04-29_FAA_Order_JO_7360.1J_Aircraft_Type_Designators--post.pdf
+- **Exact PDF URL: https://www.faa.gov/documentLibrary/media/Order/FAA_Order_JO_7360.1K_Aircraft_Type_Designators.pdf** (confirmed 2026-11-16, from the FAA publications page; the old note below says it could not be retrieved). Open the info page or the publications page above and take the PDF link. For comparison, the superseded 7360.1J PDF is https://www.faa.gov/documentLibrary/media/Order/2024-04-29_FAA_Order_JO_7360.1J_Aircraft_Type_Designators--post.pdf
 - Active notice: **Notice JO 7360.7**, issued 2025-10-14, changes 7360.1 (adds a new designator, weight class and WTC for new-entrant airframes; some new aircraft will not display a wake category on ATC displays). SECONDARY. The notice PDF URL as returned by search: https://www.faa.gov/documentLibrary/media/Notice/GENOT_N_JO_7360.7_Change_to_FAA_Order_JO_7360.1_Aircraft_Type_Designators.pdf. Notice JO 7360.6 is cancelled.
 - CWT column: the older 7360.1J edition includes sections on Wake Turbulence Category and Consolidated Wake Turbulence categories (search summary, SECONDARY). The column layout in the K edition is UNCONFIRMED. The local 3-9-6 note says SRS categories also come from 7360.1 (PRIMARY).
 
