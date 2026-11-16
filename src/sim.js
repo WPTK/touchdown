@@ -232,7 +232,7 @@ function spawn(sim, req, t) {
 function gapS(sim, a) {
   const v = Math.min(sim.cfg.innerSpeedKt, sim.finalGsKt) * KT;
   const wakeNm = sim.lastDepartWake ? wakeMinNm(sim.lastDepartWake, a.wake) : null;
-  return Math.max(sim.cfg.spacingS / sim.wx.rateMult, wakeNm ? wakeNm / v : 0, sim.cfg.latSepNm / v);
+  return Math.max(sim.cfg.spacingS / sim.wx.rateMult, wakeNm ? wakeNm / v : 0);
 }
 
 function canDepart(sim, a, t) {
@@ -366,7 +366,7 @@ function updateWeather(sim) {
   if (!sim.weather) return;
   const wx = sim.weather.at(sim.t);
   sim.wx = wx;
-  sim.finalGsKt = Math.max(90, groundSpeed(sim.cfg.innerSpeedKt, wx.windDir, wx.windKt, FLOWS[sim.flow].headingDeg)); // the default aircraft, for the landing gap and the panel
+  sim.finalGsKt = Math.max(0.4 * sim.cfg.innerSpeedKt, groundSpeed(sim.cfg.innerSpeedKt, wx.windDir, wx.windKt, FLOWS[sim.flow].headingDeg)); // the default aircraft, for the landing gap and the panel
   const want = sim.controller?.pickFlow?.(sim, wx) ?? (wx.calm ? sim.flow : wx.desiredFlow);
   if (want !== sim.flowWant) {
     sim.flowWant = want;
