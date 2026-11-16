@@ -86,6 +86,12 @@
         </dl>
       </section>
 
+      <section class="floppy" id="floppyBox" hidden>
+        <h2>Upgrade in progress</h2>
+        <p id="floppyText">A:\ </p>
+        <progress id="floppy" max="100" value="0"></progress>
+      </section>
+
       <section>
         <h2>S.E.A.N. says</h2>
         <ol id="feed" class="feed"></ol>
@@ -95,6 +101,12 @@
         <h2>JO 7110.65 monitor</h2>
         <ul id="counts" class="counts"></ul>
         <ol id="log" class="log"></ol>
+      </section>
+
+      <section>
+        <h2>High scores</h2>
+        <p id="score" class="score"></p>
+        <ul id="trophies" class="trophies"></ul>
       </section>
 
       <section>
@@ -108,6 +120,7 @@
       </section>
     </aside>
   </main>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

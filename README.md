@@ -37,6 +37,13 @@ and real approaches, pulled straight from the FAA's own data. Then it does whate
   them by deleting aircraft off the scope and counts every one as on time
 - The meter. The $12.5B down payment and the $30B ask, with every separation loss billed as another down payment.
   GAO found 11,389 project schedules. S.E.A.N.'s says "now"
+- Achievements. S.E.A.N. treats the monitor log like a high score table, so there is one, with eleven
+  achievements ("Paragraph Collector: break 5 different 7110.65 paragraphs") and a toast every time it unlocks one
+- Pilots push back. When S.E.A.N. issues a clearance, the pilot sometimes asks it to say again ("did you just clear
+  us to land on the parking deck?"), and S.E.A.N. confirms. The clearance stands
+- Floppy disk updates. S.E.A.N. installs its upgrades from a floppy, three disks and a progress bar. FOX 29
+  [reports](https://fox29.com/news/faa-finally-phase-out-floppy-disks-from-air-traffic-control-systems-2028) the FAA
+  is still buying replacement parts on eBay, and plans to retire the floppies by 2028
 - A Relieve S.E.A.N. button for the last human controller. It never works
 - Staffing. The FAA cut its controller target from 14,633 to 12,563 thanks to "modern staffing models and
   scheduling tools"

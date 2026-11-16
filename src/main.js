@@ -4,7 +4,8 @@ import { createSean } from './sean.js';
 import { createMonitor, observe, PARA } from './monitor.js';
 import { PLACES } from './places.js';
 import { meter, real, selfReported } from './score.js';
-import { CUT_STAGES } from './sean.js';
+import { CUT_STAGES, floppyProgress } from './sean.js';
+import { ACHIEVEMENTS, checkAchievements, createTrophies } from './achievements.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -18,6 +19,7 @@ let sim;
 let ctl;
 let monitor;
 let trails;
+let trophies;
 let paused = false;
 let carry = 0;
 let lastFrame = performance.now();
@@ -29,6 +31,7 @@ function reset() {
   sim = createSim({ seed, demandPerHour: Number($('demand').value), controller: ctl });
   monitor = createMonitor();
   trails = new Map();
+  trophies = createTrophies();
   carry = 0;
 }
 
@@ -42,6 +45,16 @@ function sampleTrails() {
     trails.set(a.id, t);
   }
   for (const id of trails.keys()) if (!live.has(id)) trails.delete(id);
+}
+
+function toast(title, text) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const b = document.createElement('b');
+  b.textContent = `Achievement unlocked: ${title}`;
+  el.append(b, text);
+  $('toasts').append(el);
+  setTimeout(() => el.remove(), 7000);
 }
 
 function resize() {
@@ -133,6 +146,25 @@ function updatePanel() {
   $('mAsk').textContent = `$${m.askB}B`;
   $('mGao').textContent = m.gaoSchedules.toLocaleString('en-US');
   $('mSean').textContent = `${m.seanSchedules} (${m.due})`;
+  const fp = floppyProgress(ctl.sean, sim.t);
+  $('floppyBox').hidden = !fp;
+  if (fp) {
+    $('floppy').value = fp.pct;
+    $('floppyText').textContent = `A:\\ D.U.F.F.Y. ${fp.version}, disk ${fp.disk} of 3, ${fp.pct}%`;
+  }
+  $('score').textContent = `${monitor.violations.length} points (one per logged violation), ${trophies.unlocked.size} of ${ACHIEVEMENTS.length} achievements`;
+  $('trophies').replaceChildren(
+    ...ACHIEVEMENTS.map((a) => {
+      const li = document.createElement('li');
+      const got = trophies.unlocked.has(a.id);
+      li.className = got ? 'got' : '';
+      li.append(got ? a.title : '???');
+      const s = document.createElement('span');
+      s.textContent = got ? a.blurb : a.hint;
+      li.append(s);
+      return li;
+    }),
+  );
   const sd = ctl.sean.shutdown;
   $('shutdown').checked = sd.on;
   $('shutdownOut').textContent = sd.on && sd.stage >= 0 ? `cut ${sd.stage + 1} of ${CUT_STAGES.length}: ${CUT_STAGES[sd.stage]}%, ${ctl.sean.cutTotal} deleted` : '';
@@ -186,6 +218,10 @@ function frame(now) {
       n++;
     }
     if (n === MAX_STEPS_PER_FRAME) carry = 0;
+  }
+  for (const a of checkAchievements(trophies, { sim, monitor, sean: ctl.sean })) {
+    toast(a.title, a.pride);
+    ctl.announce(sim, 'brag', `Achievement unlocked: ${a.title}. ${a.pride}`);
   }
   const { width, height } = canvas.getBoundingClientRect();
   drawScope(ctx, sim, trails, { width, height });

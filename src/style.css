@@ -79,6 +79,7 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .feed li, .log li { padding: 3px 6px; background: #0d1a14; border-left: 3px solid var(--rule); }
 .feed li.tx { border-left-color: var(--inner); }
 .feed li.brag { border-left-color: var(--transit); }
+.feed li.pilot { border-left-color: var(--alert); color: var(--dim); }
 .feed li.blame { border-left-color: var(--hold); }
 .feed time, .log time { color: var(--dim); margin-right: 6px; }
 .log li { border-left-color: var(--alert); }
@@ -92,6 +93,15 @@ input[type="range"] { accent-color: var(--transit); width: 100%; }
 .check { display: flex; gap: 8px; align-items: center; }
 .check output { color: var(--hold); font-size: 12px; }
 .meter dd { color: var(--hold); }
+.floppy progress { width: 100%; accent-color: var(--hold); }
+.floppy p { margin: 0 0 4px; color: var(--hold); font-size: 12px; }
+.trophies { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font-size: 12px; }
+.trophies li { padding: 3px 6px; background: #0d1a14; border-left: 3px solid var(--rule); color: var(--dim); }
+.trophies li.got { border-left-color: var(--transit); color: var(--text); }
+.trophies li span { display: block; font-size: 11px; color: var(--dim); }
+.toasts { position: fixed; left: 16px; bottom: 16px; display: grid; gap: 8px; max-width: 340px; z-index: 5; }
+.toast { background: var(--panel); border: 1px solid var(--transit); padding: 8px 12px; font-size: 12px; }
+.toast b { display: block; color: var(--transit); margin-bottom: 2px; }
 .where li { color: var(--text); }
 .where .para { color: var(--inner); }
 

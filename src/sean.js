@@ -6,7 +6,7 @@
 
 import { mulberry32 } from './rng.js';
 import { FAF, outerAlt } from './sim.js';
-import { pick, refusal } from './comms.js';
+import { hasLine, pick, refusal } from './comms.js';
 import { PLACES, DIVERT_TO } from './places.js';
 
 const KT = 1 / 3600;
@@ -17,6 +17,18 @@ const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
 const STEP_RATES = [520, 520, 700, 900, 1200];
 
 export const BLIMP_KT = 35;
+
+export const FLOPPY_S = 150; // one upgrade, three disks
+export const FLOPPY_DISKS = 3;
+const LAND_THINGS = ['the highway', 'the parking deck', 'a rental car lot', 'the interstate', 'a very short road', 'the roof of the terminal'];
+
+// How far along an upgrade is, or null when none is installing.
+export function floppyProgress(sean, t) {
+  const f = sean.floppy;
+  if (!f) return null;
+  const pct = Math.min(100, Math.floor((100 * (t - f.startT)) / FLOPPY_S));
+  return { pct, disk: Math.min(FLOPPY_DISKS, 1 + Math.floor(((t - f.startT) / FLOPPY_S) * FLOPPY_DISKS)), version: f.version };
+}
 
 export const OUTAGE_S = 90; // the Newark and Philadelphia TRACON outages ran about that long (docs/research/atc-news-2026.md)
 // The 2025 shutdown's flight cuts at 40 airports, in order (docs/research/atc-news-2026.md). Each stage runs this long.
@@ -44,6 +56,10 @@ export function createSean(seed = 1) {
     lossLast: new Map(), // callsign pair -> last tick that pair was in breach
     shutdown: { on: false, startT: 0, stage: -1, acc: 0, requestedSeen: 0 },
     cutTotal: 0,
+    nextFloppyT: 900 + fexpo(1.5 * HOUR),
+    floppy: null, // an upgrade being installed: { startT, version, disk }
+    installs: 0,
+    version: 0,
     relieveTries: 0,
     relieved: false, // it never is
     blimpsSent: 0,
@@ -62,8 +78,18 @@ export function createSean(seed = 1) {
     sean.feed.push({ t: sim.t, kind, text });
     if (sean.feed.length > FEED_MAX) sean.feed.shift();
   };
-  const line = (sim, feedKind, key, vars) => say(sim, feedKind, pick(key, rng, vars));
-  const lineF = (sim, feedKind, key, vars) => say(sim, feedKind, pick(key, frng, vars));
+  // A transmission to an aircraft may get a query from the pilot, and S.E.A.N. stands by what it said.
+  const pushback = (sim, key, vars, always = false) => {
+    if (!always && frng() >= 0.4) return;
+    say(sim, 'pilot', `${vars.cs}: ${pick(`q_${key}`, frng, vars)}`);
+    say(sim, 'tx', pick('confirm', frng, vars));
+  };
+  const speak = (sim, feedKind, key, vars, r) => {
+    say(sim, feedKind, pick(key, r, vars));
+    if (feedKind === 'tx' && vars?.cs && hasLine(`q_${key}`)) pushback(sim, key, vars);
+  };
+  const line = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, rng);
+  const lineF = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, frng);
   const fixName = (sim, a) => sim.geo.feeders[a.feeder].name;
   const onFinal = (sim, a) => a.phase === 'inner' && a.s > sim.geo.feeders[a.feeder].l1;
   const distRwy = (a) => Math.hypot(a.x, a.y);
@@ -184,6 +210,11 @@ export function createSean(seed = 1) {
   const ctl = {
     sean,
 
+    // Lets the UI add a line to the feed (an unlocked achievement).
+    announce(sim, kind, text) {
+      say(sim, kind, text);
+    },
+
     // The shutdown toggle: replays the 2025 cuts from now.
     setShutdown(sim, on) {
       const sd = sean.shutdown;
@@ -268,6 +299,26 @@ export function createSean(seed = 1) {
         }
       }
 
+      // Floppy disk upgrades: a progress bar, disk swaps, and a version number.
+      if (!sean.floppy && t >= sean.nextFloppyT) {
+        sean.floppy = { startT: t, version: `0.${sean.version + 1}`, disk: 1 };
+        lineF(sim, 'brag', 'floppyStart', { v: sean.floppy.version });
+        if (frng() < 0.4) lineF(sim, 'brag', 'floppyDrive');
+      } else if (sean.floppy) {
+        const p = floppyProgress(sean, t);
+        const f = sean.floppy;
+        if (p.pct >= 100) {
+          sean.version++;
+          sean.installs++;
+          sean.floppy = null;
+          sean.nextFloppyT = t + 900 + fexpo(1.5 * HOUR);
+          lineF(sim, 'brag', 'floppyEnd', { v: f.version, pct: 1 + Math.floor(frng() * 9) });
+        } else if (p.disk > f.disk) {
+          f.disk = p.disk;
+          lineF(sim, 'brag', 'floppyDisk', { n: p.disk, total: FLOPPY_DISKS });
+        }
+      }
+
       // Flights that reach another field land there. S.E.A.N. counts them all.
       if (sean.enroute.some((e) => e.landT <= t)) {
         for (const e of sean.enroute.filter((x) => x.landT <= t).sort((x, y) => x.landT - y.landT)) {
@@ -341,6 +392,16 @@ export function createSean(seed = 1) {
           issueSpeed(sim, a, kt);
           line(sim, 'tx', 'speedTx', { cs: a.callsign, kt });
           line(sim, 'brag', 'speed', { kt });
+        }
+        // Now and then a landing clearance that no pilot expects. The pilot asks, S.E.A.N. stands by it.
+        if (onFinal(sim, a) && a.landOdd === undefined && a.kind !== 'blimp') {
+          a.landOdd = frng() < 0.08;
+          if (a.landOdd) {
+            const vars = { cs: a.callsign, thing: LAND_THINGS[Math.floor(frng() * LAND_THINGS.length)] };
+            say(sim, 'tx', pick('landTx', frng, vars));
+            pushback(sim, 'landTx', vars, true);
+            say(sim, 'brag', pick('landBrag', frng, vars));
+          }
         }
         if (a.kind === 'blimp' && a.phase === 'inner' && !a.ordered) {
           a.ordered = true;

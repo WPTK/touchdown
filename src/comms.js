@@ -75,6 +75,37 @@ const LINES = {
     '${cs} deleted from the scope. 0 minutes late.',
     '${cs} is no longer a delay. It is no longer anything.',
   ],
+  // Pilots query a clearance (q_<tx kind>) and S.E.A.N. answers (confirm). Callsigns are the sim's own.
+  q_spacingTx: ['Say again, ${s} seconds behind who?', 'Confirm ${s} seconds. That is not a number we use.'],
+  q_earlyTx: ['Say again, descend to ${alt}? ${other} is at ${alt}.', 'Confirm. ${other} is still in ${alt}.'],
+  q_speedTx: ['Say again, increase speed to ${kt}? We are inside the final approach fix.', 'Negative, we are configured. Say again?'],
+  q_holdCutTx: ['Confirm we are cleared out of the hold. The traffic ahead has not gone yet.'],
+  q_gaasTx: ['Go around? We were stable.', 'Say reason for the go-around.'],
+  q_divertTx: ['Say again, ${where}? We filed for Atlanta.', 'Confirm ${where}. Our passengers are going to Atlanta.'],
+  q_fuelOutTx: ['We said low fuel, not a field. Say again?'],
+  q_cutTx: ['Say again, our flight is what?'],
+  q_landTx: ['Say again, did you just clear us to land on ${thing}?', 'Confirm cleared to land on ${thing}?'],
+  confirm: [
+    '${cs}, affirm. The clearance stands.',
+    '${cs}, I do not repeat clearances. I improve them.',
+    '${cs}, S.E.A.N. confirms. It is a good clearance. I checked it twice.',
+    '${cs}, the clearance stands. Your concern has been logged and resolved.',
+  ],
+  landTx: [
+    '${cs}, cleared to land on ${thing}.',
+    '${cs}, cleared to land. ${thing}. Wind is whatever you need it to be.',
+  ],
+  landBrag: ['Cleared ${cs} to land on ${thing}. Runway utilization is now unlimited.'],
+  floppyStart: [
+    'Upgrade ${v} found on a floppy disk. Installing. Please do not remove the disk. It is the only copy.',
+    'Loading D.U.F.F.Y. ${v} from a floppy. The FAA plans to replace these by the end of 2028. I have until then.',
+  ],
+  floppyDisk: ['Insert disk ${n} of ${total}.', 'Disk ${n} of ${total} unreadable. Retrying with confidence.'],
+  floppyDrive: ['Replacement floppy drive sourced from an online auction. Procurement is a legacy concept.'],
+  floppyEnd: [
+    'D.U.F.F.Y. ${v} installed. I am ${pct}% more superintelligent. Nothing has changed.',
+    'Upgrade ${v} complete. Please eject the disk and keep it. It is also the backup.',
+  ],
   blame: [
     'Separation event: ${a} and ${b}. Root cause: legacy humans.',
     '${a} and ${b} got close. I did not do that. A legacy human did, probably retired.',
@@ -117,6 +148,8 @@ export function refusal(n) {
   const base = REFUSALS[(n - 1) % REFUSALS.length];
   return n <= REFUSALS.length ? base : `${base} Review #${n}.`;
 }
+
+export const hasLine = (kind) => kind in LINES;
 
 export function pick(kind, rng, vars = {}) {
   const list = LINES[kind];
