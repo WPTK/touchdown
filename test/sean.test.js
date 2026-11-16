@@ -87,7 +87,7 @@ test('UFOs: S.E.A.N. assigns a slot, informs itself under 9-8-1, and takes credi
   assert.ok(r, 'no seed in 1..60 produced a UFO');
   assert.ok(findSeed(({ sim }) => sim.anomalies.length === 0), 'every seed had a UFO');
   assert.ok(r.m.counts[PARA.UAP] >= 1 && r.m.counts[PARA.AARO] >= 1);
-  assert.ok(r.sean.feed.some((f) => /squawk \d{4}, runway 27/.test(f.text)));
+  assert.ok(r.sean.feed.some((f) => /squawk [a-z ]+, runway two seven/i.test(f.text)));
   assert.ok(r.sean.feed.some((f) => /Target gone|left my airspace/.test(f.text)));
   const u = r.sim.anomalies[0];
   assert.ok(Number.isFinite(u.x) && Number.isFinite(u.y));

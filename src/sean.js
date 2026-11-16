@@ -8,14 +8,19 @@ import { mulberry32 } from './rng.js';
 import { goAround as simGoAround, outerAlt, replan, toRunway } from './sim.js';
 import { makePath } from './airspace.js';
 import { PARA } from './monitor.js';
-import { hasLine, pick, refusal } from './comms.js';
+import { CLEARANCE, hasLine, pick, refusal } from './comms.js';
+import { misread, readback, render, spokenVars, stepOn } from './phrase.js';
+import { congestion } from './feed.js';
 import { PLACES, DIVERT_TO } from './places.js';
-import { pickFlow, weatherTick } from './wx-sean.js';
+import { pickFlow, weatherTick, zulu } from './wx-sean.js';
 
 const KT = 1 / 3600;
 const HOUR = 3600;
 const GAAS_NM = 10; // GaaS counts the aircraft inside this distance of the runway
 const FEED_MAX = 1000; // the panel shows 12; the rest is for the tests
+const READBACK_ERR = 0.18; // pilots who read a number back wrong
+const STEPPED_ON = 0.1; // readbacks somebody talks over
+const UNABLE = 0.12; // pilots who say unable to a speed or a descent
 
 const SPACINGS = [120, 120, 95, 80, 70, 60, 50];
 const STEP_RATES = [520, 520, 700, 900, 1200];
@@ -41,6 +46,7 @@ export const STAGE_S = 45 * 60;
 
 export function createSean(seed = 1) {
   const rng = mulberry32((Math.imul(seed, 2654435761) ^ 0x5ea9) >>> 0);
+  const crng = mulberry32((Math.imul(seed, 3266489917) ^ 0xc033) >>> 0); // the frequency: readbacks, blocked calls, extra clearances
   const expo = (meanS) => -Math.log(1 - rng()) * meanS;
   // The newer features draw from their own stream, so they mostly leave the older ones alone. Text for the old
   // events (a fuel-out, a diversion) still comes from `rng`, and every pick draws once even from a one-line list.
@@ -79,24 +85,60 @@ export function createSean(seed = 1) {
     blimpWinSaid: false,
     started: false,
     wx: {}, // weather state, see wx-sean.js
+    lastBusyT: -Infinity,
   };
 
-  const say = (sim, kind, text) => {
-    sean.feed.push({ t: sim.t, kind, text });
+  const say = (sim, kind, text, extra) => {
+    sean.feed.push({ t: sim.t, kind, text, ...extra });
     if (sean.feed.length > FEED_MAX) sean.feed.shift();
   };
   // A transmission to an aircraft may get a query from the pilot, and S.E.A.N. stands by what it said.
+  // Returns true when the pilot asked.
   const pushback = (sim, key, vars, always = false) => {
-    if (!always && frng() >= 0.4) return;
-    say(sim, 'pilot', `${vars.cs}: ${pick(`q_${key}`, frng, vars)}`);
-    say(sim, 'tx', pick('confirm', frng, vars));
+    if (!always && frng() >= 0.4) return false;
+    const sv = spokenVars(vars);
+    say(sim, 'pilot', `${vars.cs}: ${pick(`q_${key}`, frng, sv)}`);
+    say(sim, 'tx', pick('confirm', frng, sv));
+    return true;
+  };
+
+  // The pilot reads a clearance back (2-4-3). Now and then it is wrong, S.E.A.N. says "readback correct" and the
+  // monitor logs the hearback. Now and then somebody steps on the call and it is said again. All of it draws from the
+  // comms stream, so it never moves the older events.
+  const readbackOf = (sim, c) => {
+    const wrong = crng() < READBACK_ERR ? misread(c, crng) : null;
+    const text = readback(wrong ?? c);
+    if (crng() < STEPPED_ON) {
+      say(sim, 'readback', stepOn(text, crng), { blocked: true });
+      say(sim, 'tx', pick('blocked', crng));
+    }
+    say(sim, 'readback', text);
+    if (wrong) {
+      sim.readbacks.push({ t: sim.t, callsign: c.cs, said: text, expected: render(c) });
+      say(sim, 'tx', pick('readbackOk', crng, spokenVars({ cs: c.cs })));
+    } else if (crng() < 0.25) {
+      say(sim, 'tx', pick('readbackOk', crng, spokenVars({ cs: c.cs })));
+    }
+  };
+  // "Unable". The pilot says so, S.E.A.N. files it under compliance.
+  const unable = (sim, key, vars) => {
+    say(sim, 'pilot', `${vars.cs}: ${pick(`unable_${key}`, crng, spokenVars(vars))}`);
+    say(sim, 'tx', pick('unableReply', crng, spokenVars(vars)));
   };
   const speak = (sim, feedKind, key, vars, r) => {
-    say(sim, feedKind, pick(key, r, vars));
-    if (feedKind === 'tx' && vars?.cs && hasLine(`q_${key}`)) pushback(sim, key, vars);
+    const sv = feedKind === 'tx' ? spokenVars(vars) : vars;
+    const c = feedKind === 'tx' && CLEARANCE[key] && vars?.cs ? CLEARANCE[key](vars) : null;
+    const tail = pick(key, r, sv);
+    say(sim, feedKind, c ? `${render(c)} ${tail}`.trim() : tail);
+    if (feedKind !== 'tx' || !vars?.cs) return;
+    const asked = hasLine(`q_${key}`) && pushback(sim, key, vars);
+    if (asked || !c) return;
+    if (hasLine(`unable_${key}`) && (vars.cs.startsWith('ZPL') || crng() < UNABLE)) unable(sim, key, vars);
+    else readbackOf(sim, c);
   };
   const line = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, rng);
   const lineF = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, frng);
+  const lineC = (sim, feedKind, key, vars) => speak(sim, feedKind, key, vars, crng);
   const fixName = (sim, a) => a.fix;
   const onFinal = (sim, a) => a.phase === 'inner' && a.s >= a.route.finalStartS; // established on the final approach course
   const distRwy = toRunway;
@@ -251,6 +293,14 @@ export function createSean(seed = 1) {
         line(sim, 'brag', 'online');
       }
       if (sim.weather) weatherTick(sim, sean.wx, say);
+      // A busy frequency is a good frequency.
+      if (t % 10 === 0 && t - sean.lastBusyT > 900) {
+        const busy = congestion(sean.feed, t);
+        if (busy.pct >= 100) {
+          sean.lastBusyT = t;
+          lineC(sim, 'brag', 'busy', { pct: busy.pct });
+        }
+      }
 
       // Copper outage: the scope goes dark for 90 s. Traffic keeps moving and S.E.A.N. keeps talking.
       const out = sim.outages.at(-1);
@@ -382,7 +432,7 @@ export function createSean(seed = 1) {
       if (q0 && q0.phase === 'hold' && cfg.spacingS > 50 && rng() < 0.004 * dt) {
         cfg.spacingS = 50;
         replan(sim);
-        line(sim, 'tx', 'holdCutTx', { cs: q0.callsign });
+        line(sim, 'tx', 'holdCutTx', { cs: q0.callsign, fix: fixName(sim, q0) });
         line(sim, 'brag', 'holdCut', { fix: fixName(sim, q0) });
       }
 
@@ -405,10 +455,25 @@ export function createSean(seed = 1) {
           a.landOdd = frng() < 0.08;
           if (a.landOdd) {
             const vars = { cs: a.callsign, thing: LAND_THINGS[Math.floor(frng() * LAND_THINGS.length)] };
-            say(sim, 'tx', pick('landTx', frng, vars));
+            say(sim, 'tx', `${render({ kind: 'land', cs: vars.cs, rwy: vars.thing })} ${pick('landTx', frng, vars)}`.trim());
             pushback(sim, 'landTx', vars, true);
             say(sim, 'brag', pick('landBrag', frng, vars));
           }
+        }
+        // The clearances every arrival gets, in the order's words (4-6-1, 4-8-1, 3-10-5). The format is perfect.
+        if (a.phase === 'hold' && !a.holdTold) {
+          a.holdTold = true;
+          const base = sim.weather?.metars[0] ?? { day: 1, hour: 12, min: 0 };
+          lineC(sim, 'tx', 'holdTx', { cs: a.callsign, fix: fixName(sim, a), efc: zulu(base, t).slice(2, 6) }); // the further clearance is now
+        }
+        if (onFinal(sim, a) && !a.apchTold) {
+          a.apchTold = true;
+          const faf = a.route.path.verts.find((v) => v.role === 'faf');
+          lineC(sim, 'tx', 'approachTx', { cs: a.callsign, fix: faf?.id, rwy: a.rwy });
+        }
+        if (onFinal(sim, a) && a.apchTold && !a.landTold && !a.landOdd && distRwy(a) < 4) {
+          a.landTold = true;
+          lineC(sim, 'tx', 'landClrTx', { cs: a.callsign, rwy: a.rwy });
         }
         if (a.kind === 'blimp' && a.phase === 'inner' && !a.ordered) {
           a.ordered = true;

@@ -9,6 +9,7 @@ import { PLACES } from './places.js';
 import { meter, real, selfReported } from './score.js';
 import { CUT_STAGES, floppyProgress } from './sean.js';
 import { ACHIEVEMENTS, checkAchievements, createTrophies } from './achievements.js';
+import { FILTERS, buildFeed, congestion, congestionLabel } from './feed.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scope');
@@ -24,6 +25,7 @@ let monitor;
 let trails;
 let trophies;
 let paused = false;
+const filters = new Set(FILTERS);
 let carry = 0;
 let lastFrame = performance.now();
 let lastPanel = 0;
@@ -163,7 +165,10 @@ function updatePanel() {
     li.append(tm, ...parts);
     return li;
   };
-  $('feed').replaceChildren(...ctl.sean.feed.slice(-12).reverse().map((f) => row('li', f.kind, f.t, f.text)));
+  $('feed').replaceChildren(...buildFeed(ctl.sean.feed, monitor.violations, filters).map((f) => row('li', f.blocked ? `${f.kind} blocked` : f.kind, f.t, f.text)));
+  const busy = congestion(ctl.sean.feed, sim.t);
+  $('busy').value = Math.min(100, busy.pct);
+  $('busyText').textContent = `${busy.pct}%, ${congestionLabel(busy.pct)}`;
   $('counts').replaceChildren(
     ...Object.entries(monitor.counts)
       .sort((x, y) => y[1] - x[1])
@@ -309,6 +314,13 @@ $('relieve').addEventListener('click', () => {
   ctl.relieve(sim);
   updatePanel();
 });
+for (const box of document.querySelectorAll('[data-filter]')) {
+  box.addEventListener('change', () => {
+    if (box.checked) filters.add(box.dataset.filter);
+    else filters.delete(box.dataset.filter);
+    updatePanel();
+  });
+}
 $('scenario').addEventListener('change', reset);
 window.addEventListener('resize', resize);
 

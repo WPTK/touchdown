@@ -63,7 +63,7 @@ test('pilots push back, and S.E.A.N. answers and the clearance stands', () => {
       const reply = feed[i + 1];
       if (!reply) return;
       assert.equal(reply.kind, 'tx');
-      assert.match(reply.text, /^[A-Z]{3,}\d+, /);
+      assert.match(reply.text, /^[A-Z][a-z]+ [a-z ]+, /); // the controller says the call sign in words
       assert.ok(!/\b(correction|disregard|cancel)\b/i.test(reply.text), 'S.E.A.N. backed down');
       if (/land on/.test(f.text)) {
         landings++;
