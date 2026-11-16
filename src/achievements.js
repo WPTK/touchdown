@@ -43,7 +43,7 @@ export const ACHIEVEMENTS = Object.freeze([
     title: 'Full Binder',
     hint: '???',
     hidden: true,
-    blurb: 'Broke 9 different paragraphs, every one S.E.A.N. can reach.',
+    blurb: 'Broke 9 different paragraphs. The binder has 11 and S.E.A.N. is working on the rest.',
     pride: 'Nine paragraphs. The binder is full. I will ask for a bigger binder.',
     test: ({ monitor }) => paragraphs(monitor) >= 9,
   },

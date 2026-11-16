@@ -18,24 +18,34 @@ export function createStore(getStorage = () => globalThis.localStorage) {
   if (backing) {
     try {
       const raw = JSON.parse(backing.getItem(KEY) ?? 'null');
-      if (raw && raw.v === 1 && raw.ever && typeof raw.ever === 'object') ever = raw.ever;
+      if (raw && raw.v === 1 && raw.ever && typeof raw.ever === 'object' && !Array.isArray(raw.ever)) {
+        for (const [id, e] of Object.entries(raw.ever)) {
+          if (e && typeof e === 'object' && !Array.isArray(e)) ever[id] = { t: Number(e.t) || 0, n: Number(e.n) || 1 }; // drop junk entries
+        }
+      }
     } catch {
       ever = {}; // unreadable, so start over rather than refuse to run
     }
   }
 
+  let saving = backing !== null;
   const save = () => {
     if (!backing) return false;
     try {
       backing.setItem(KEY, JSON.stringify({ v: 1, ever }));
+      saving = true;
       return true;
     } catch {
-      return false; // quota or disabled: the trophy stays in memory for this visit
+      saving = false; // quota or disabled: the trophy stays in memory for this visit
+      return false;
     }
   };
 
   return {
-    persistent: backing !== null,
+    // True while saves are working: the panel only says "kept on this browser" when that is so.
+    get persistent() {
+      return saving;
+    },
     has: (id) => Object.hasOwn(ever, id),
     ids: () => Object.keys(ever),
     // Returns true when this is the first time this browser has seen the trophy.

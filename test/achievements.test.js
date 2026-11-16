@@ -148,6 +148,23 @@ test('the store survives a missing localStorage, one that throws, a full one and
   assert.deepEqual(createStore(() => junk).ids(), []);
   junk.data.set('touchdown.trophies.v1', JSON.stringify({ v: 2, ever: { x: {} } }));
   assert.deepEqual(createStore(() => junk).ids(), []);
+  // Well-formed but wrong: null entries, an array, a string. The frame loop must not throw on the next unlock.
+  junk.data.set('touchdown.trophies.v1', JSON.stringify({ v: 1, ever: { 'first-loss': null, 'series-a': 'x', 'boot-disk': { t: 5, n: 2 } } }));
+  const odd = createStore(() => junk);
+  assert.deepEqual(odd.ids(), ['boot-disk']);
+  assert.equal(odd.add('first-loss', 7), true);
+  assert.equal(odd.add('boot-disk', 9), false);
+  junk.data.set('touchdown.trophies.v1', JSON.stringify({ v: 1, ever: ['first-loss'] }));
+  assert.deepEqual(createStore(() => junk).ids(), []);
+  // A save that starts failing stops claiming the trophies are kept.
+  let ok = true;
+  const flaky = { getItem: () => null, setItem: () => { if (!ok) throw new Error('Quota'); } };
+  const f2 = createStore(() => flaky);
+  f2.add('a', 1);
+  assert.equal(f2.persistent, true);
+  ok = false;
+  f2.add('b', 2);
+  assert.equal(f2.persistent, false);
   // Something that is not a Storage at all.
   assert.equal(createStore(() => ({})).persistent, false);
   assert.equal(createStore(() => 'nope').persistent, false);
